@@ -25,6 +25,7 @@ A C# .NET web application that provides a REST API and SQL Search GUI for Apache
 2. **Docker and Docker Compose**
    - For running Apache Phoenix locally using the provided docker-compose files
    - ODBC driver is automatically installed during Docker build
+   - **Note**: ODBC connectors require a Cloudera subscription to download
    - See [Documentation/SETUP.md](Documentation/SETUP.md) for Docker build configuration details
 
 3. **Apache Phoenix Query Server**
@@ -129,7 +130,7 @@ Edit `appsettings.json` to match your Phoenix setup:
 }
 ```
 
-**Note:** The ODBC driver is automatically installed when using Docker. The connection string uses `Host=` instead of `Server=` (Hortonworks driver requirement). For Docker build and ODBC configuration setup, see [Documentation/SETUP.md](Documentation/SETUP.md). For local development setup, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md). For detailed ODBC installation, see [Documentation/ODBC_INSTALLATION.md](Documentation/ODBC_INSTALLATION.md) and [Documentation/PHOENIX_ODBC_SETUP.md](Documentation/PHOENIX_ODBC_SETUP.md).
+**Note:** The ODBC driver is automatically installed when using Docker. The connection string uses `Host=` instead of `Server=` (Hortonworks driver requirement). **Important**: ODBC connectors must be downloaded with a Cloudera subscription. For Docker build and ODBC configuration setup, see [Documentation/SETUP.md](Documentation/SETUP.md). For local development setup, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md). For detailed ODBC installation, see [Documentation/ODBC_INSTALLATION.md](Documentation/ODBC_INSTALLATION.md) and [Documentation/PHOENIX_ODBC_SETUP.md](Documentation/PHOENIX_ODBC_SETUP.md).
 
 4. **Build and Run the Application:**
 ```bash
@@ -511,6 +512,8 @@ This application can be deployed in a Docker container. For Docker build setup a
 - Container networking
 - ODBC driver installation in containers
 - Production deployment considerations
+
+**Important**: ODBC connectors require a Cloudera subscription to download. The ODBC drivers included in the `ODBC/` directory are provided for development purposes only.
 
 ## Phoenix Views
 
