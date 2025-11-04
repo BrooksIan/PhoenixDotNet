@@ -53,6 +53,10 @@ PhoenixDotNet/
 ├── PhoenixConnectionInitializer.cs # Background service for connection initialization
 ├── wwwroot/
 │   └── index.html                 # SQL Search GUI
+├── images/                        # GUI screenshots
+│   ├── List_tables_views.png      # List tables and views screenshot
+│   ├── phoenix_table_example.png  # Phoenix table query example
+│   └── phoenix_view_example.png   # Phoenix view query example
 ├── appsettings.json               # Configuration file
 ├── docker-compose.yml             # Docker Compose for OPDB (includes Phoenix)
 ├── hbase-site.xml                 # HBase configuration (mounted to container)
@@ -170,6 +174,17 @@ A web-based SQL query interface on port **8100**:
 - Execute queries and view results in formatted tables
 - Quick query buttons for common operations
 - Real-time error messages and status updates
+
+#### GUI Screenshots
+
+**List Tables and Views:**
+![List Tables and Views](images/List_tables_views.png)
+
+**Phoenix Table Query Example:**
+![Phoenix Table Example](images/phoenix_table_example.png)
+
+**Phoenix View Query Example:**
+![Phoenix View Example](images/phoenix_view_example.png)
 
 ### Features
 
