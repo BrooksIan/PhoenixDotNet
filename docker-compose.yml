@@ -1,0 +1,61 @@
+services:
+  opdb-docker:
+    image: cloudera/opdb-docker:latest
+    container_name: opdb-docker
+    hostname: opdb-docker
+    ports:
+      - "8765:8765"    # Phoenix Query Server (ODBC/JDBC)
+      - "8080:8080"    # Web UI
+      - "8085:8085"    # Web UI
+      - "9090:9090"    # HBase Web UI
+      - "9095:9095"    # HBase Web UI
+      - "2181:2181"    # Zookeeper
+      - "16010:16010"  # HBase Master UI
+      - "16020:16020"  # HBase RegionServer UI
+      - "16000:16000"  # HBase Master
+      - "16030:16030"  # HBase RegionServer
+    networks:
+      - obdb-net
+    environment:
+      - PQS_ENABLED=true
+    volumes:
+      # Mount custom hbase-site.xml with JSON serialization enabled
+      - ./hbase-site.xml:/opt/hbase/conf/hbase-site.xml:ro
+    restart: unless-stopped
+
+  phoenix-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+    platform: linux/amd64
+    container_name: phoenix-dotnet-app
+    hostname: phoenix-app
+    ports:
+      - "8099:8099"    # Phoenix .NET API
+      - "8100:8100"    # Phoenix SQL Search GUI
+    depends_on:
+      opdb-docker:
+        condition: service_started
+    # Add health check to ensure HBase/Phoenix is ready (takes 60+ seconds to initialize)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8099/api/phoenix/health", "||", "exit", "1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s  # Increased start period to allow HBase/Phoenix initialization
+    networks:
+      - obdb-net
+    environment:
+      - Phoenix__Server=opdb-docker
+      - Phoenix__Port=8765
+      - Phoenix__ConnectionString=Driver={Phoenix ODBC Driver};Host=opdb-docker;Port=8765
+      - HBase__Server=opdb-docker
+      - HBase__Port=8080
+      - ASPNETCORE_ENVIRONMENT=Production
+    restart: unless-stopped
+
+networks:
+  obdb-net:
+    driver: bridge

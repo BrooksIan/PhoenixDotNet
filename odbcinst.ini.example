@@ -1,0 +1,24 @@
+# Phoenix ODBC Driver Configuration
+# Copy this file to odbcinst.ini in the project root for Docker builds
+# The Dockerfile will copy it to /etc/odbcinst.ini in the container
+# Adjust paths based on where you install the Phoenix ODBC driver
+
+[Phoenix ODBC Driver]
+Description=Hortonworks Phoenix ODBC Driver
+Driver=/usr/lib/x86_64-linux-gnu/odbc/libphoenixodbc_sb64.so
+Setup=/usr/lib/x86_64-linux-gnu/odbc/libphoenixodbc_sb64.so
+FileUsage=1
+
+# Alternative driver names you might need based on your driver version:
+# [Phoenix]
+# Description=Phoenix ODBC Driver
+# Driver=/usr/lib/x86_64-linux-gnu/odbc/libphoenixodbc.so
+# Setup=/usr/lib/x86_64-linux-gnu/odbc/libphoenixodbc.so
+# FileUsage=1
+
+# [Hortonworks Phoenix ODBC Driver]
+# Description=Hortonworks Phoenix ODBC Driver
+# Driver=/usr/lib/x86_64-linux-gnu/odbc/libphoenixodbc.so
+# Setup=/usr/lib/x86_64-linux-gnu/odbc/libphoenixodbc.so
+# FileUsage=1
+

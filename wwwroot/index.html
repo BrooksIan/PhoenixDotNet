@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phoenix SQL Search GUI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .query-section {
+            margin-bottom: 30px;
+        }
+
+        .query-section label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .results-section {
+            margin-top: 30px;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .results-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .results-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .results-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .quick-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .quick-query-btn {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .quick-query-btn:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Phoenix SQL Search GUI</h1>
+            <p>Apache Phoenix Query Interface</p>
+        </div>
+        <div class="content">
+            <div class="info-box">
+                <h3>Quick Start</h3>
+                <ul>
+                    <li>Enter SQL queries in the text area below</li>
+                    <li>Click "Execute Query" to run SELECT statements</li>
+                    <li>Click "Execute Command" for CREATE, INSERT, UPDATE, DELETE</li>
+                    <li>Use "List Tables" to see all available tables</li>
+                    <li>Use "List Views" to see all Phoenix views (for HBase-native tables)</li>
+                </ul>
+                <h3 style="margin-top: 15px; color: #667eea;">Important: UPPERCASE Table Names</h3>
+                <ul>
+                    <li><strong>Phoenix converts unquoted identifiers to UPPERCASE</strong></li>
+                    <li>When you create: <code>CREATE TABLE users (...)</code> → Query as: <code>SELECT * FROM USERS</code></li>
+                    <li>Always use <strong>UPPERCASE</strong> table names when querying (e.g., <code>USERS</code>, <code>TABLE_NAME</code>)</li>
+                    <li>Query tables directly instead of relying on the list endpoint</li>
+                </ul>
+            </div>
+
+            <div class="query-section">
+                <label for="sqlQuery">SQL Query:</label>
+                <textarea id="sqlQuery" placeholder="Enter your SQL query here...&#10;Example: SELECT * FROM SYSTEM.CATALOG LIMIT 10"></textarea>
+                
+                <div class="quick-queries">
+                    <button class="quick-query-btn" onclick="setQuery('SELECT * FROM SYSTEM.CATALOG LIMIT 10')">
+                        📋 Show System Catalog
+                    </button>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT TABLE_NAME, TABLE_TYPE FROM SYSTEM.CATALOG WHERE (TABLE_TYPE = \'u\' OR TABLE_TYPE = \'v\') ORDER BY TABLE_NAME')">
+                        📊 List Tables & Views
+                    </button>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'u\' ORDER BY TABLE_NAME')">
+                        🗂️ User Tables Only
+                    </button>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'v\' ORDER BY TABLE_NAME')">
+                        👁️ Phoenix Views Only
+                    </button>
+                    <button class="quick-query-btn" onclick="setQuery('SELECT * FROM USERS ORDER BY id')">
+                        📝 Example: Query USERS Table
+                    </button>
+                    <button class="quick-query-btn" onclick="setQuery('CREATE TABLE IF NOT EXISTS example_table (id VARCHAR PRIMARY KEY, name VARCHAR)')">
+                        ➕ Example: Create Table
+                    </button>
+                    <button class="quick-query-btn" onclick="setQuery('UPSERT INTO USERS (id, name) VALUES (\'1\', \'Test\')')">
+                        💾 Example: Insert Data
+                    </button>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="executeQuery()">Execute Query</button>
+                    <button class="btn-success" onclick="executeCommand()">Execute Command</button>
+                    <button class="btn-secondary" onclick="listTables()">List Tables</button>
+                    <button class="btn-secondary" onclick="listViews()">List Views</button>
+                    <button class="btn-secondary" onclick="clearResults()">Clear Results</button>
+                </div>
+
+                <div id="status" class="status"></div>
+            </div>
+
+            <div class="results-section">
+                <h2>Results</h2>
+                <div id="results"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/phoenix';
+
+        function setQuery(query) {
+            document.getElementById('sqlQuery').value = query;
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading() {
+            document.getElementById('results').innerHTML = '<div class="loading">Executing query</div>';
+        }
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (data.error) {
+                resultsDiv.innerHTML = `<div class="status error">Error: ${data.error}</div>`;
+                showStatus(`Error: ${data.error}`, 'error');
+                return;
+            }
+
+            // Check if we have columns to display
+            if (!data.columns || data.columns.length === 0) {
+                let message = 'Query executed successfully but returned no results.<br><br>';
+                message += 'This could mean:<ul style="text-align: left; display: inline-block; margin-top: 10px;">';
+                message += '<li>No tables exist yet - try creating a table first</li>';
+                message += '<li>No data matches your query criteria</li>';
+                message += '<li>Data may need time to commit - try again in a few seconds</li>';
+                message += '<li><strong>Remember: Use UPPERCASE table names!</strong> (e.g., <code>USERS</code> not <code>users</code>)</li>';
+                message += '</ul><br>';
+                message += 'Try: <code>CREATE TABLE IF NOT EXISTS test_table (id VARCHAR PRIMARY KEY, name VARCHAR)</code><br>';
+                message += 'Then query: <code>SELECT * FROM TEST_TABLE</code>';
+                resultsDiv.innerHTML = `<div class="status info">${message}</div>`;
+                showStatus('Query executed successfully but returned no results.', 'info');
+                return;
+            }
+
+            let html = '<table class="results-table"><thead><tr>';
+            
+            // Header row - always show columns if they exist
+            data.columns.forEach(col => {
+                html += `<th>${escapeHtml(col.name)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            // Data rows - show rows if they exist
+            if (data.rows && data.rows.length > 0) {
+                data.rows.forEach(row => {
+                    html += '<tr>';
+                    data.columns.forEach(col => {
+                        const value = row[col.name];
+                        html += `<td>${escapeHtml(value === null || value === undefined ? 'NULL' : String(value))}</td>`;
+                    });
+                    html += '</tr>';
+                });
+            } else {
+                // Show empty row message when we have columns but no data
+                html += `<tr><td colspan="${data.columns.length}" style="text-align: center; padding: 30px; color: #666; font-style: italic;">No rows returned</td></tr>`;
+            }
+
+            html += '</tbody></table>';
+            
+            const rowCount = data.rowCount || (data.rows ? data.rows.length : 0);
+            html += `<p style="margin-top: 10px; color: #666;">Total rows: ${rowCount}</p>`;
+            
+            // Add helpful message if no results but query executed successfully
+            if (rowCount === 0 && data.message) {
+                html += `<div class="status info" style="margin-top: 15px;">${escapeHtml(data.message)}</div>`;
+            }
+            
+            resultsDiv.innerHTML = html;
+            
+            if (rowCount === 0) {
+                // More specific message when columns are shown vs when no structure is returned
+                if (data.columns && data.columns.length > 0) {
+                    showStatus(`Query executed successfully. Returned ${data.columns.length} column(s) but 0 rows.`, 'info');
+                } else {
+                    showStatus('Query executed successfully but returned no results.', 'info');
+                }
+            } else {
+                showStatus(`Query executed successfully. Returned ${rowCount} row(s).`, 'success');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function executeQuery() {
+            const query = document.getElementById('sqlQuery').value.trim();
+            
+            if (!query) {
+                showStatus('Please enter a SQL query.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_BASE}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sql: query })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+
+                displayResults(data);
+            } catch (error) {
+                document.getElementById('results').innerHTML = 
+                    `<div class="status error">Error: ${error.message}</div>`;
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function executeCommand() {
+            const query = document.getElementById('sqlQuery').value.trim();
+            
+            if (!query) {
+                showStatus('Please enter a SQL command.', 'error');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_BASE}/execute`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ sql: query })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+
+                document.getElementById('results').innerHTML = 
+                    `<div class="status success">${data.message || 'Command executed successfully!'}</div>`;
+                showStatus(data.message || 'Command executed successfully!', 'success');
+            } catch (error) {
+                document.getElementById('results').innerHTML = 
+                    `<div class="status error">Error: ${error.message}</div>`;
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function listTables() {
+            // Use the API endpoint to get tables
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/tables`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+
+                // If API returns empty, try direct query with better filter
+                if (!data.rows || data.rows.length === 0) {
+                    setQuery('SELECT TABLE_NAME, TABLE_TYPE FROM SYSTEM.CATALOG WHERE (TABLE_TYPE = \'u\' OR TABLE_TYPE = \'v\') ORDER BY TABLE_NAME');
+                    await executeQuery();
+                } else {
+                    displayResults(data);
+                }
+            } catch (error) {
+                // Fallback to direct query if API fails
+                setQuery('SELECT TABLE_NAME, TABLE_TYPE FROM SYSTEM.CATALOG WHERE (TABLE_TYPE = \'u\' OR TABLE_TYPE = \'v\') ORDER BY TABLE_NAME');
+                await executeQuery();
+            }
+        }
+
+        async function listViews() {
+            // Use the API endpoint to get views
+            showLoading();
+            
+            try {
+                const response = await fetch(`${API_BASE}/views`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Request failed');
+                }
+
+                // If API returns empty, try direct query as fallback
+                if (!data.rows || data.rows.length === 0) {
+                    setQuery('SELECT TABLE_NAME, TABLE_SCHEM, TABLE_TYPE FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'v\' ORDER BY TABLE_NAME');
+                    await executeQuery();
+                } else {
+                    displayResults(data);
+                    showStatus('Views retrieved successfully!', 'success');
+                }
+            } catch (error) {
+                // Fallback to direct query if API fails
+                setQuery('SELECT TABLE_NAME, TABLE_SCHEM, TABLE_TYPE FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'v\' ORDER BY TABLE_NAME');
+                await executeQuery();
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('sqlQuery').value = '';
+            document.getElementById('status').style.display = 'none';
+        }
+
+        // Allow Ctrl+Enter to execute query
+        document.getElementById('sqlQuery').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                executeQuery();
+            }
+        });
+    </script>
+</body>
+</html>
+
