@@ -25,10 +25,17 @@ A C# .NET web application that provides a REST API and SQL Search GUI for Apache
 2. **Docker and Docker Compose**
    - For running Apache Phoenix locally using the provided docker-compose files
    - ODBC driver is automatically installed during Docker build
-   - **Note**: ODBC connectors require a Cloudera subscription to download
    - See [Documentation/SETUP.md](Documentation/SETUP.md) for Docker build configuration details
 
-3. **Apache Phoenix Query Server**
+3. **Apache Phoenix ODBC Driver** (for local development)
+   - **Important**: ODBC connectors require a Cloudera subscription to download
+   - Download from: Cloudera customer portal (requires subscription)
+   - The `ODBC/` directory in this repository contains drivers for development purposes only
+   - For production use, download the latest driver from your Cloudera subscription
+   - See [Documentation/ODBC_INSTALLATION.md](Documentation/ODBC_INSTALLATION.md) for detailed installation instructions
+   - See [Documentation/PHOENIX_ODBC_SETUP.md](Documentation/PHOENIX_ODBC_SETUP.md) for setup and configuration
+
+4. **Apache Phoenix Query Server**
    - Included in the docker-compose setup
    - Runs on port 8765
    - Uses Avatica protocol (JSON/Protobuf)
