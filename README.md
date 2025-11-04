@@ -802,6 +802,7 @@ cd tests && ./smoke_test.sh
 - [Documentation/README_REST_API.md](Documentation/README_REST_API.md) - REST API documentation
 - [Documentation/README_TABLES.md](Documentation/README_TABLES.md) - Table operations guide
 - [Documentation/README_VIEWS.md](Documentation/README_VIEWS.md) - Phoenix views documentation
+- [Documentation/HBASE_VS_PHOENIX_TABLES.md](Documentation/HBASE_VS_PHOENIX_TABLES.md) - **Technical Deep Dive**: Native HBase vs Phoenix tables, encoding, and limitations
 - [Documentation/HBASE_API_TEST.md](Documentation/HBASE_API_TEST.md) - HBase API testing guide
 - [Documentation/HBASE_API_GUIDE.md](Documentation/HBASE_API_GUIDE.md) - HBase API integration guide
 - [Documentation/HBASE_REST_SETUP.md](Documentation/HBASE_REST_SETUP.md) - HBase REST API setup guide

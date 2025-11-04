@@ -56,6 +56,15 @@ Welcome to the PhoenixDotNet documentation. This directory contains comprehensiv
   - Querying views with filters
   - View best practices
 
+- **[HBASE_VS_PHOENIX_TABLES.md](./HBASE_VS_PHOENIX_TABLES.md)** - **Technical Deep Dive**: Native HBase vs Phoenix tables
+  - Comprehensive comparison of table types
+  - Binary encoding mechanisms explained
+  - Storage format details
+  - Limitations and constraints
+  - When to use which approach
+  - Phoenix views on HBase tables
+  - Troubleshooting guide
+
 ### HBase Integration
 
 - **[HBASE_API_TEST.md](./HBASE_API_TEST.md)** - HBase API testing guide
@@ -155,6 +164,7 @@ Welcome to the PhoenixDotNet documentation. This directory contains comprehensiv
 **Work with tables:**
 1. Table operations: [README_TABLES.md](./README_TABLES.md)
 2. Views: [README_VIEWS.md](./README_VIEWS.md)
+3. **Technical deep dive**: [HBASE_VS_PHOENIX_TABLES.md](./HBASE_VS_PHOENIX_TABLES.md) - Native HBase vs Phoenix tables, encoding, and limitations
 
 **Integrate with HBase:**
 1. HBase API guide: [HBASE_API_TEST.md](./HBASE_API_TEST.md)
@@ -189,6 +199,7 @@ Documentation/
 ├── README_REST_API.md             # REST API reference
 ├── README_TABLES.md               # Table operations
 ├── README_VIEWS.md                # Phoenix views
+├── HBASE_VS_PHOENIX_TABLES.md     # Technical deep dive: Native HBase vs Phoenix tables
 ├── HBASE_API_TEST.md              # HBase API testing
 ├── TROUBLESHOOTING.md             # Troubleshooting guide
 ├── PHOENIX_ODBC_SETUP.md          # ODBC driver setup
