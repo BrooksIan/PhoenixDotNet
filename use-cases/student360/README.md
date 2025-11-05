@@ -112,19 +112,23 @@ This use case demonstrates a comprehensive 360-degree view of a student using a 
 
 ### Script Location
 
-The implementation script is located at:
-```
-examples/create_student_360_single_view.sh
-```
+The implementation scripts are located in this folder:
+- `create_student_360_tables.sh` - Creates the HBase tables and inserts sample data
+- `create_student_360_single_view.sh` - Creates the single wide Phoenix view
 
 ### Quick Start
 
-1. **Run the script** to create the table, insert data, and create the Phoenix view:
+1. **First, create the HBase tables and insert data**:
    ```bash
-   ./examples/create_student_360_single_view.sh
+   ./create_student_360_tables.sh
    ```
 
-2. **Query the 360-degree view**:
+2. **Then, create the single view** to create the Phoenix view:
+   ```bash
+   ./create_student_360_single_view.sh
+   ```
+
+3. **Query the 360-degree view**:
    ```bash
    # Get complete student profile (single row)
    curl -X POST http://localhost:8099/api/phoenix/query \
@@ -468,7 +472,7 @@ curl -X POST http://localhost:8099/api/phoenix/query \
 
 ## Example Script
 
-See `examples/create_student_360_single_view.sh` for a complete working example that:
+See `create_student_360_single_view.sh` in this folder for a complete working example that:
 - Creates the HBase table
 - Inserts sample data for 3 students
 - Creates the Phoenix view
