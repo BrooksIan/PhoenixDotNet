@@ -44,6 +44,21 @@ A C# .NET web application that provides a REST API and SQL Search GUI for Apache
 
 The ODBC configuration files (`odbcinst.ini` and `odbc.ini`) are included in the repository and ready to use. The Dockerfile will automatically copy them to the container during build.
 
+**Installing the ODBC Driver:**
+
+If you need to manually install the Phoenix ODBC driver (e.g., in a Docker container or for local development), use the provided installation script:
+
+```bash
+# Copy the RPM file to /tmp/phoenix-odbc.rpm first, then run:
+./install_odbc.sh
+```
+
+The `install_odbc.sh` script will:
+- Extract the Phoenix ODBC driver RPM
+- Install the driver libraries to `/usr/lib/x86_64-linux-gnu/odbc/`
+- Copy configuration files and error messages
+- Verify the installation
+
 If you need to customize these files for your environment, you can edit them directly. See [Documentation/SETUP.md](Documentation/SETUP.md) for Docker build setup and ODBC configuration details.
 
 > **📖 For step-by-step setup instructions, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md)**
@@ -144,6 +159,7 @@ Edit `appsettings.json` to match your Phoenix setup:
 
 **Notes:**
 - The ODBC driver is automatically installed when using Docker
+- If ODBC driver installation fails, you can manually install it using `./install_odbc.sh` (copy the RPM file to `/tmp/phoenix-odbc.rpm` first)
 - The connection string uses `Host=` instead of `Server=` (Hortonworks driver requirement)
 - **Important**: ODBC connectors must be downloaded with a Cloudera subscription
 - For Docker build and ODBC configuration setup, see [Documentation/SETUP.md](Documentation/SETUP.md)
