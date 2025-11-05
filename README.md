@@ -68,6 +68,11 @@ PhoenixDotNet/
 ├── appsettings.json               # Configuration file
 ├── docker-compose.yml             # Docker Compose for OPDB (includes Phoenix)
 ├── hbase-site.xml                 # HBase configuration (mounted to container)
+├── use-cases/                     # Use case examples and documentation
+│   └── student360/                # Student 360-degree view use case
+│       ├── README.md              # Complete use case documentation
+│       ├── sample_queries.sql     # 38+ sample SQL queries
+│       └── create_student_360_single_view.sh  # Implementation script
 └── README.md                      # This file
 ```
 
@@ -324,6 +329,8 @@ Apache Phoenix uses SQL syntax with some differences from standard SQL:
 - **Schema.Catalog** for system metadata queries
 - Case-sensitive table and column names (typically uppercase)
 - Support for Phoenix-specific data types
+- **Phoenix Views on HBase Tables**: Use `TO_NUMBER()` for numeric conversions (not `CAST()`)
+  - Example: `TO_NUMBER("column_name") >= 3.5` (for VARCHAR columns in HBase-native tables)
 
 Example CREATE TABLE:
 ```sql
@@ -477,6 +484,8 @@ See [Documentation/README_VIEWS.md](Documentation/README_VIEWS.md) for:
 - Critical requirements for HBase table views
 - Query examples
 - Best practices for working with HBase-native tables
+
+**📋 Use Case Example**: See [use-cases/student360/README.md](use-cases/student360/README.md) for a complete 360-degree view implementation demonstrating single wide HBase table design with Phoenix view, including 38+ sample SQL queries.
 
 ## Troubleshooting
 
@@ -761,6 +770,9 @@ cd tests && ./smoke_test.sh
 - [Documentation/QUICK_REFERENCE.md](Documentation/QUICK_REFERENCE.md) - Quick reference cheat sheet
 - [Documentation/COMMON_TASKS.md](Documentation/COMMON_TASKS.md) - Common tasks step-by-step guide
 - [Documentation/CONTRIBUTING.md](Documentation/CONTRIBUTING.md) - Contribution guidelines
+
+### Use Cases
+- [use-cases/student360/README.md](use-cases/student360/README.md) - **Student 360-Degree View**: Complete use case demonstrating single wide HBase table design with Phoenix view for comprehensive student profiles (demographics, academics, services) in one row per student
 
 ### Documentation Index
 - [Documentation/README.md](Documentation/README.md) - Complete documentation index and navigation guide

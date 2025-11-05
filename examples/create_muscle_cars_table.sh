@@ -16,7 +16,7 @@ echo ""
 # Step 1: Create HBase Table
 echo "Step 1: Creating HBase table '$TABLE_NAME' with column families..."
 echo ""
-docker exec opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
+docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
 create 'MUSCLE_CARS', 'info', 'specs', 'details'
 EOF
 echo ""
@@ -27,7 +27,7 @@ sleep 2
 # Step 2: Insert 10 rows of muscle car data
 echo "Step 2: Inserting 10 rows of muscle car data..."
 echo ""
-docker exec opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
+docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
 put 'MUSCLE_CARS', '1', 'info:manufacturer', 'Ford'
 put 'MUSCLE_CARS', '1', 'info:model', 'Mustang'
 put 'MUSCLE_CARS', '1', 'info:year', '2024'
@@ -126,7 +126,7 @@ sleep 2
 # Step 3: Verify data in HBase
 echo "Step 3: Verifying data in HBase..."
 echo ""
-docker exec opdb-docker /opt/hbase/bin/hbase shell <<< "scan 'MUSCLE_CARS', {LIMIT => 3}" | grep -A 5 "ROW  COLUMN" | head -10
+echo "scan 'MUSCLE_CARS', {LIMIT => 3}" | docker exec -i opdb-docker /opt/hbase/bin/hbase shell | grep -A 5 "ROW  COLUMN" | head -10
 echo ""
 
 # Step 4: Create Phoenix View
