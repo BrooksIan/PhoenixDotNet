@@ -30,10 +30,15 @@ A C# .NET web application that provides a REST API and SQL Search GUI for Apache
 
 3. **Apache Phoenix ODBC Driver** (optional - for local development)
    - **Important**: ODBC connectors require a Cloudera subscription to download
-   - **Note**: The ODBC driver is optional. If you don't have the driver files, the Docker build will still succeed and the application will automatically use the REST API fallback instead of ODBC
-   - Download from: Cloudera customer portal (requires subscription)
-   - The `ODBC/` directory is not tracked in git (it's in `.gitignore`)
-   - If you have the driver files, place them at: `ODBC/1.0.8.1011/Linux/HortonworksPhoenix-64bit-1.0.8.1011-1.rpm`
+   - **✅ ODBC Driver is Optional**: The ODBC driver is **completely optional**. If you don't have the driver files:
+     - ✅ Docker build will **succeed** without them
+     - ✅ The application will automatically use the **REST API fallback** instead of ODBC
+     - ✅ You can build and run the application immediately without downloading the driver
+   - **Note**: The `ODBC/` directory is not tracked in git (it's in `.gitignore`), so driver files won't be in the repository
+   - **If you have the driver files** (requires Cloudera subscription):
+     - Download from: Cloudera customer portal (requires subscription)
+     - Place them at: `ODBC/1.0.8.1011/Linux/HortonworksPhoenix-64bit-1.0.8.1011-1.rpm`
+     - The Docker build will automatically detect and install the driver
    - For production use, download the latest driver from your Cloudera subscription
    - See [Documentation/ODBC_INSTALLATION.md](Documentation/ODBC_INSTALLATION.md) for detailed installation instructions
    - See [Documentation/PHOENIX_ODBC_SETUP.md](Documentation/PHOENIX_ODBC_SETUP.md) for setup and configuration
