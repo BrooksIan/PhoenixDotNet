@@ -10,13 +10,13 @@ echo ""
 
 # Step 1: Start HBase Thrift
 echo "Step 1: Starting HBase Thrift service..."
-THRIFT_OUTPUT=$(docker exec opdb-docker /opt/hbase/bin/hbase-daemon.sh start thrift 2>&1)
+THRIFT_OUTPUT=$(docker exec -i opdb-docker /opt/hbase/bin/hbase-daemon.sh start thrift 2>&1)
 echo "$THRIFT_OUTPUT"
 echo ""
 
 # Step 2: Start HBase REST (Stargate)
 echo "Step 2: Starting HBase REST service..."
-REST_OUTPUT=$(docker exec opdb-docker /opt/hbase/bin/hbase-daemon.sh start rest 2>&1)
+REST_OUTPUT=$(docker exec -i opdb-docker /opt/hbase/bin/hbase-daemon.sh start rest 2>&1)
 echo "$REST_OUTPUT"
 echo ""
 
@@ -29,7 +29,7 @@ echo ""
 echo "Step 3: Verifying services are running..."
 echo ""
 
-THRIFT_PROCESS=$(docker exec opdb-docker ps aux | grep -i thrift | grep -v grep | head -1)
+THRIFT_PROCESS=$(docker exec -i opdb-docker ps aux | grep -i thrift | grep -v grep | head -1)
 if [ -n "$THRIFT_PROCESS" ]; then
     echo "✅ HBase Thrift is running"
     echo "   $THRIFT_PROCESS"
@@ -38,7 +38,7 @@ else
 fi
 echo ""
 
-REST_PROCESS=$(docker exec opdb-docker ps aux | grep -i "rest\|stargate" | grep -v grep | head -1)
+REST_PROCESS=$(docker exec -i opdb-docker ps aux | grep -i "rest\|stargate" | grep -v grep | head -1)
 if [ -n "$REST_PROCESS" ]; then
     echo "✅ HBase REST is running"
     echo "   $REST_PROCESS"
@@ -70,8 +70,8 @@ echo "Summary"
 echo "=========================================="
 echo ""
 echo "Services started:"
-echo "  - HBase Thrift: $(docker exec opdb-docker ps aux | grep -i thrift | grep -v grep | wc -l | tr -d ' ') process(es)"
-echo "  - HBase REST: $(docker exec opdb-docker ps aux | grep -i "rest\|stargate" | grep -v grep | wc -l | tr -d ' ') process(es)"
+echo "  - HBase Thrift: $(docker exec -i opdb-docker ps aux | grep -i thrift | grep -v grep | wc -l | tr -d ' ') process(es)"
+echo "  - HBase REST: $(docker exec -i opdb-docker ps aux | grep -i "rest\|stargate" | grep -v grep | wc -l | tr -d ' ') process(es)"
 echo ""
 echo "You can now:"
 echo "  1. Create HBase tables via HBase REST API"
@@ -79,10 +79,10 @@ echo "  2. Insert data via HBase REST API"
 echo "  3. Use both HBase shell and REST API"
 echo ""
 echo "To check service status:"
-echo "  docker exec opdb-docker ps aux | grep -E 'thrift|rest'"
+echo "  docker exec -i opdb-docker ps aux | grep -E 'thrift|rest'"
 echo ""
 echo "To stop services:"
-echo "  docker exec opdb-docker /opt/hbase/bin/hbase-daemon.sh stop thrift"
-echo "  docker exec opdb-docker /opt/hbase/bin/hbase-daemon.sh stop rest"
+echo "  docker exec -i opdb-docker /opt/hbase/bin/hbase-daemon.sh stop thrift"
+echo "  docker exec -i opdb-docker /opt/hbase/bin/hbase-daemon.sh stop rest"
 echo ""
 

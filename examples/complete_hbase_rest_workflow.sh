@@ -20,10 +20,10 @@ echo "Step 0: Ensuring HBase REST API is running..."
 echo ""
 
 # Check if REST is running
-REST_RUNNING=$(docker exec opdb-docker ps aux | grep -i "rest\|stargate" | grep -v grep | wc -l | tr -d ' ')
+REST_RUNNING=$(docker exec -i opdb-docker ps aux | grep -i "rest\|stargate" | grep -v grep | wc -l | tr -d ' ')
 if [ "$REST_RUNNING" -eq 0 ]; then
     echo "Starting HBase REST service..."
-    docker exec opdb-docker /opt/hbase/bin/hbase-daemon.sh start rest 2>&1 | grep -v "WARN\|NativeCodeLoader" || true
+    docker exec -i opdb-docker /opt/hbase/bin/hbase-daemon.sh start rest 2>&1 | grep -v "WARN\|NativeCodeLoader" || true
     sleep 5
     echo "HBase REST service started"
 else
@@ -163,7 +163,7 @@ echo ""
 echo "Step 4: Verifying data in HBase table..."
 echo ""
 
-SCAN_OUTPUT=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<EOF
+SCAN_OUTPUT=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<EOF
 scan '$HBASE_TABLE'
 EOF
  2>&1 | grep -E "ROW|COLUMN|value" | head -15)

@@ -25,7 +25,7 @@ echo ""
 echo "Step 1: Creating HBase table '$HBASE_TABLE' via HBase shell..."
 echo ""
 
-CREATE_OUTPUT=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<EOF
+CREATE_OUTPUT=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<EOF
 create '$HBASE_TABLE', 'info', 'contact', 'status'
 EOF
  2>&1 | grep -v "WARN\|NativeCodeLoader\|HBase Shell\|Use \"help\"")
@@ -45,7 +45,7 @@ echo "Step 2: Inserting 3 rows via HBase shell..."
 echo ""
 
 echo "  - Inserting row1: id='1', name='Alice', email='alice@example.com', score=100, status='active'"
-docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<EOF
+docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<EOF
 put '$HBASE_TABLE', '1', 'info:name', 'Alice'
 put '$HBASE_TABLE', '1', 'info:score', '100'
 put '$HBASE_TABLE', '1', 'contact:email', 'alice@example.com'
@@ -54,7 +54,7 @@ EOF
  > /dev/null 2>&1
 
 echo "  - Inserting row2: id='2', name='Bob', email='bob@example.com', score=200, status='active'"
-docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<EOF
+docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<EOF
 put '$HBASE_TABLE', '2', 'info:name', 'Bob'
 put '$HBASE_TABLE', '2', 'info:score', '200'
 put '$HBASE_TABLE', '2', 'contact:email', 'bob@example.com'
@@ -63,7 +63,7 @@ EOF
  > /dev/null 2>&1
 
 echo "  - Inserting row3: id='3', name='Charlie', email='charlie@example.com', score=150, status='inactive'"
-docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<EOF
+docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<EOF
 put '$HBASE_TABLE', '3', 'info:name', 'Charlie'
 put '$HBASE_TABLE', '3', 'info:score', '150'
 put '$HBASE_TABLE', '3', 'contact:email', 'charlie@example.com'
@@ -77,7 +77,7 @@ echo ""
 # Step 3: Verify Data in HBase
 echo "Step 3: Verifying data in HBase table..."
 echo ""
-SCAN_OUTPUT=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<EOF
+SCAN_OUTPUT=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<EOF
 scan '$HBASE_TABLE'
 EOF
  2>&1 | grep -E "ROW|COLUMN|value" | head -15)

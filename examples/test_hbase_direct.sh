@@ -17,7 +17,7 @@ echo ""
 # Step 1: Create HBase Table via HBase Shell
 echo "Step 1: Creating HBase table '$TABLE_NAME' via HBase shell..."
 echo ""
-CREATE_OUTPUT=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<< "create '$TABLE_NAME', 'cf1', 'cf2'" 2>&1 | grep -v "WARN\|NativeCodeLoader\|HBase Shell\|Use \"help\"\|For Reference" | head -5)
+CREATE_OUTPUT=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<< "create '$TABLE_NAME', 'cf1', 'cf2'" 2>&1 | grep -v "WARN\|NativeCodeLoader\|HBase Shell\|Use \"help\"\|For Reference" | head -5)
 echo "$CREATE_OUTPUT"
 echo ""
 
@@ -26,17 +26,17 @@ echo "Step 2: Inserting 3 rows via HBase shell..."
 echo ""
 
 echo "  - Inserting row1: name='Alice', score=100"
-PUT_OUTPUT1=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<< "put '$TABLE_NAME', 'row1', 'cf1:name', 'Alice'; put '$TABLE_NAME', 'row1', 'cf1:score', '100'" 2>&1 | grep -v "WARN\|NativeCodeLoader" | head -3)
+PUT_OUTPUT1=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<< "put '$TABLE_NAME', 'row1', 'cf1:name', 'Alice'; put '$TABLE_NAME', 'row1', 'cf1:score', '100'" 2>&1 | grep -v "WARN\|NativeCodeLoader" | head -3)
 echo "$PUT_OUTPUT1"
 echo ""
 
 echo "  - Inserting row2: name='Bob', score=200"
-PUT_OUTPUT2=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<< "put '$TABLE_NAME', 'row2', 'cf1:name', 'Bob'; put '$TABLE_NAME', 'row2', 'cf1:score', '200'" 2>&1 | grep -v "WARN\|NativeCodeLoader" | head -3)
+PUT_OUTPUT2=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<< "put '$TABLE_NAME', 'row2', 'cf1:name', 'Bob'; put '$TABLE_NAME', 'row2', 'cf1:score', '200'" 2>&1 | grep -v "WARN\|NativeCodeLoader" | head -3)
 echo "$PUT_OUTPUT2"
 echo ""
 
 echo "  - Inserting row3: name='Charlie', score=150"
-PUT_OUTPUT3=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<< "put '$TABLE_NAME', 'row3', 'cf1:name', 'Charlie'; put '$TABLE_NAME', 'row3', 'cf1:score', '150'" 2>&1 | grep -v "WARN\|NativeCodeLoader" | head -3)
+PUT_OUTPUT3=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<< "put '$TABLE_NAME', 'row3', 'cf1:name', 'Charlie'; put '$TABLE_NAME', 'row3', 'cf1:score', '150'" 2>&1 | grep -v "WARN\|NativeCodeLoader" | head -3)
 echo "$PUT_OUTPUT3"
 echo ""
 
@@ -46,7 +46,7 @@ echo ""
 # Step 3: Verify Data in HBase
 echo "Step 3: Verifying data in HBase table..."
 echo ""
-SCAN_OUTPUT=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<< "scan '$TABLE_NAME'" 2>&1 | grep -E "ROW|COLUMN|value" | head -15)
+SCAN_OUTPUT=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<< "scan '$TABLE_NAME'" 2>&1 | grep -E "ROW|COLUMN|value" | head -15)
 echo "$SCAN_OUTPUT"
 echo ""
 

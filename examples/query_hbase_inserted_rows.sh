@@ -17,7 +17,7 @@ echo ""
 # Query via HBase shell (direct access)
 echo "Querying rows 10 and 11 via HBase shell:"
 echo ""
-docker exec opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
+docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
 echo "Row 10:"
 scan 'USERS', {ROWPREFIXFILTER => '10'}
 echo ""

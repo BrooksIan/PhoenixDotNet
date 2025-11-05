@@ -71,7 +71,7 @@ echo ""
 
 # Step 6: Check HBase directly
 echo "Step 5: Checking HBase directly..."
-HBASE_SCAN=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<< "scan 'DEMO_TABLE'" 2>&1 | grep -E "ROW|COLUMN|value" | head -10)
+HBASE_SCAN=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<< "scan 'DEMO_TABLE'" 2>&1 | grep -E "ROW|COLUMN|value" | head -10)
 echo "$HBASE_SCAN"
 echo ""
 

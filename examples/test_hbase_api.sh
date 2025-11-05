@@ -174,7 +174,7 @@ echo ""
 echo "Scanning HBase table '${NAMESPACE}:${TABLE_NAME}'..."
 echo ""
 
-HBASE_SCAN=$(docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<< "scan '${NAMESPACE}:${TABLE_NAME}'" 2>&1 | grep -E "ROW|COLUMN|value" | head -20)
+HBASE_SCAN=$(docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<< "scan '${NAMESPACE}:${TABLE_NAME}'" 2>&1 | grep -E "ROW|COLUMN|value" | head -20)
 echo "$HBASE_SCAN"
 echo ""
 
