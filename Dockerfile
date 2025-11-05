@@ -8,6 +8,9 @@ RUN dotnet restore "PhoenixDotNet.csproj"
 
 # Copy everything else and build
 COPY . .
+# Ensure ODBC directory structure exists (for optional ODBC driver installation)
+# This prevents build failures if ODBC/ directory doesn't exist
+RUN mkdir -p ODBC/1.0.8.1011/Linux || true
 RUN dotnet build "PhoenixDotNet.csproj" -c Release -o /app/build
 
 # Publish stage
@@ -36,13 +39,30 @@ RUN mkdir -p /usr/lib/x86_64-linux-gnu/odbc
 # Create directory for ODBC configuration
 RUN mkdir -p /etc
 
-# Install Phoenix ODBC driver from RPM file
+# Install Phoenix ODBC driver from RPM file (optional)
 # Extract the Hortonworks Phoenix ODBC driver RPM
-COPY ODBC/1.0.8.1011/Linux/HortonworksPhoenix-64bit-1.0.8.1011-1.rpm /tmp/phoenix-odbc.rpm
+# Note: ODBC driver files are not in git (they're in .gitignore)
+# If the files don't exist, the build will continue and the app will use REST API fallback
 COPY install_odbc.sh /tmp/install_odbc.sh
-RUN chmod +x /tmp/install_odbc.sh && \
-    /tmp/install_odbc.sh && \
-    rm -f /tmp/install_odbc.sh
+RUN chmod +x /tmp/install_odbc.sh
+# Copy ODBC directory from build stage
+# The build stage ensured the ODBC directory structure exists (even if empty)
+# So COPY --from will succeed and copy the directory structure
+COPY --from=build /src/ODBC /tmp/odbc-source/
+# Conditionally install ODBC driver if RPM file exists
+RUN if [ -f "/tmp/odbc-source/1.0.8.1011/Linux/HortonworksPhoenix-64bit-1.0.8.1011-1.rpm" ]; then \
+        cp /tmp/odbc-source/1.0.8.1011/Linux/HortonworksPhoenix-64bit-1.0.8.1011-1.rpm /tmp/phoenix-odbc.rpm && \
+        /tmp/install_odbc.sh && \
+        echo "✅ ODBC driver installed successfully"; \
+    else \
+        echo "⚠️  ODBC driver RPM not found at ODBC/1.0.8.1011/Linux/HortonworksPhoenix-64bit-1.0.8.1011-1.rpm"; \
+        echo "⚠️  Application will use REST API fallback instead of ODBC"; \
+        echo "⚠️  To install ODBC driver:"; \
+        echo "     1. Download from Cloudera (requires subscription)"; \
+        echo "     2. Place file at: ODBC/1.0.8.1011/Linux/HortonworksPhoenix-64bit-1.0.8.1011-1.rpm"; \
+        echo "     3. Rebuild Docker image"; \
+    fi && \
+    rm -rf /tmp/install_odbc.sh /tmp/phoenix-odbc.rpm /tmp/odbc-source 2>/dev/null || true
 
 # Copy ODBC configuration files
 # The Dockerfile expects odbcinst.ini in the project root
