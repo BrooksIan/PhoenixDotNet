@@ -474,6 +474,31 @@ See `examples/create_student_360_single_view.sh` for a complete working example 
 - Creates the Phoenix view
 - Demonstrates query examples
 
+## Example Screenshots
+
+### Single Student Profile Query
+
+Querying a complete student profile showing all 360-degree information in a single row:
+
+![Single Student GPA Query](../../images/student360_example_singlestudentgpa.png)
+
+**Query**: `SELECT * FROM "STUDENT_360" WHERE "rowkey" = 'STU001'`
+
+This demonstrates how all student information (personal, contact, academic, attendance, support services, financial, activities) is retrieved in a single query with one row.
+
+### High GPA Students Query
+
+Querying students with high GPA, showing how numeric comparisons work with `TO_NUMBER()`:
+
+![High GPA Students Query](../../images/student360_example_highgpa.png)
+
+**Query**: `SELECT "rowkey", "personal"."first_name", "personal"."last_name", "performance"."cumulative_GPA" FROM "STUDENT_360" WHERE TO_NUMBER("performance"."cumulative_GPA") >= 3.5 ORDER BY TO_NUMBER("performance"."cumulative_GPA") DESC`
+
+This demonstrates:
+- Numeric filtering using `TO_NUMBER()` function
+- Sorting by converted numeric values
+- Multiple students with complete profiles
+
 ## Sample SQL Queries
 
 See `sample_queries.sql` for a comprehensive collection of 38+ sample Phoenix SQL queries including:
