@@ -59,6 +59,22 @@ The `install_odbc.sh` script will:
 - Copy configuration files and error messages
 - Verify the installation
 
+**Verifying the ODBC Installation:**
+
+After installing the ODBC driver, verify the installation using the provided verification script:
+
+```bash
+./verify_odbc.sh
+```
+
+The `verify_odbc.sh` script will:
+- Check if the container is running
+- Verify ODBC driver is registered with `odbcinst`
+- Check if driver library files exist in the expected location
+- Verify `odbcinst.ini` configuration
+- Check application logs for ODBC connection status
+- Test the connection via health check endpoint
+
 If you need to customize these files for your environment, you can edit them directly. See [Documentation/SETUP.md](Documentation/SETUP.md) for Docker build setup and ODBC configuration details.
 
 > **📖 For step-by-step setup instructions, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md)**
