@@ -137,7 +137,13 @@ Edit `appsettings.json` to match your Phoenix setup:
 }
 ```
 
-**Note:** The ODBC driver is automatically installed when using Docker. The connection string uses `Host=` instead of `Server=` (Hortonworks driver requirement). **Important**: ODBC connectors must be downloaded with a Cloudera subscription. For Docker build and ODBC configuration setup, see [Documentation/SETUP.md](Documentation/SETUP.md). For local development setup, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md). For detailed ODBC installation, see [Documentation/ODBC_INSTALLATION.md](Documentation/ODBC_INSTALLATION.md) and [Documentation/PHOENIX_ODBC_SETUP.md](Documentation/PHOENIX_ODBC_SETUP.md).
+**Notes:**
+- The ODBC driver is automatically installed when using Docker
+- The connection string uses `Host=` instead of `Server=` (Hortonworks driver requirement)
+- **Important**: ODBC connectors must be downloaded with a Cloudera subscription
+- For Docker build and ODBC configuration setup, see [Documentation/SETUP.md](Documentation/SETUP.md)
+- For local development setup, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md)
+- For detailed ODBC installation, see [Documentation/ODBC_INSTALLATION.md](Documentation/ODBC_INSTALLATION.md) and [Documentation/PHOENIX_ODBC_SETUP.md](Documentation/PHOENIX_ODBC_SETUP.md)
 
 4. **Build and Run the Application:**
 ```bash
@@ -170,6 +176,8 @@ The application provides a REST API on port **8099**:
 - `POST /api/phoenix/views` - Create a Phoenix view on an HBase table
 - `DELETE /api/phoenix/views/{viewName}` - Drop a view
 
+> **📖 For detailed Phoenix Views documentation, see the [Phoenix Views](#phoenix-views) section below.**
+
 #### HBase Operations
 - `POST /api/phoenix/hbase/tables/sensor` - Create sensor information table
 - `GET /api/phoenix/hbase/tables/{tableName}/exists` - Check if table exists
@@ -198,10 +206,10 @@ A web-based SQL query interface on port **8100**:
 
 1. **ODBC Connection** - Primary connection method (automatically installed during Docker build)
 2. **REST API Fallback** - Automatic fallback if ODBC is unavailable
-2. **SQL Search GUI** - Web-based interface for querying Phoenix
-3. **HBase Integration** - Direct HBase REST API operations
-4. **Connection Management** - Automatic connection initialization and retry logic
-5. **Error Handling** - Detailed error messages with troubleshooting guidance
+3. **SQL Search GUI** - Web-based interface for querying Phoenix
+4. **HBase Integration** - Direct HBase REST API operations
+5. **Connection Management** - Automatic connection initialization and retry logic
+6. **Error Handling** - Detailed error messages with troubleshooting guidance
 
 ## API Usage Examples
 
@@ -260,15 +268,10 @@ curl http://localhost:8099/api/phoenix/views/sensor_readings_view/columns
 
 #### Create Phoenix View for HBase Table
 
-⚠️ **CRITICAL REQUIREMENTS:**
-- **View names MUST be UPPERCASE**: Phoenix requires uppercase names (e.g., `SENSOR_READINGS`, not `sensor_readings`)
-- **View name MUST match HBase table name exactly**: The view name must exactly match the HBase table name (case-sensitive)
+> **📖 For detailed Phoenix Views documentation with examples, see the [Phoenix Views](#phoenix-views) section below.**
 
+Quick example:
 ```bash
-# Step 1: Create HBase table with UPPERCASE name
-create 'SENSOR_READINGS', 'info', 'data'
-
-# Step 2: Create Phoenix view with the SAME UPPERCASE name
 curl -X POST http://localhost:8099/api/phoenix/views \
   -H "Content-Type: application/json" \
   -d '{
@@ -284,19 +287,7 @@ curl -X POST http://localhost:8099/api/phoenix/views \
   }'
 ```
 
-**Important:** The `viewName` and `hBaseTableName` must match exactly (same case). Use uppercase for both.
-
-#### Query a View
-```bash
-curl -X POST http://localhost:8099/api/phoenix/query \
-  -H "Content-Type: application/json" \
-  -d '{"sql":"SELECT * FROM sensor_readings_view LIMIT 10"}'
-```
-
-#### Drop a View
-```bash
-curl -X DELETE http://localhost:8099/api/phoenix/views/sensor_readings_view
-```
+⚠️ **CRITICAL**: View names must be UPPERCASE and match the HBase table name exactly. See [Phoenix Views](#phoenix-views) section for details.
 
 ### Using C# Code
 
@@ -388,14 +379,15 @@ For HBase-native tables, insert data via HBase shell or REST API, then create a 
 
 ```bash
 # Option 1: Insert via HBase shell
+# Note: Create table with UPPERCASE name first: create 'EMPLOYEE_DATA', 'info', 'contact'
 docker-compose exec -T opdb-docker /opt/hbase/bin/hbase shell <<EOF
-put 'employee_data', '1', 'info:name', 'Alice'
-put 'employee_data', '1', 'info:score', '100'
-put 'employee_data', '1', 'contact:email', 'alice@example.com'
+put 'EMPLOYEE_DATA', '1', 'info:name', 'Alice'
+put 'EMPLOYEE_DATA', '1', 'info:score', '100'
+put 'EMPLOYEE_DATA', '1', 'contact:email', 'alice@example.com'
 EOF
 
 # Option 2: Insert via HBase REST API
-curl -X PUT http://localhost:8099/api/phoenix/hbase/tables/employee_data/data \
+curl -X PUT http://localhost:8099/api/phoenix/hbase/tables/EMPLOYEE_DATA/data \
   -H "Content-Type: application/json" \
   -d '{
     "rowKey": "1",
@@ -435,92 +427,6 @@ curl -X POST http://localhost:8099/api/phoenix/views \
 - ✅ **Phoenix views**: For HBase-native tables, Phoenix views provide SQL access without requiring data migration.
 
 For more details, see [Documentation/README_TABLES.md](Documentation/README_TABLES.md).
-
-## Troubleshooting
-
-> **📖 If you're setting up for the first time, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md) for step-by-step instructions.**
-
-### Common Issues
-
-1. **"Response status code does not indicate success: 500 (Server Error)"**
-   - **Cause**: Phoenix Query Server may not be fully initialized or there's a protocol mismatch
-   - **Solution**: 
-     - Wait 60-90 seconds for HBase/Phoenix to fully initialize after container start
-     - Check logs: `docker logs opdb-docker` and `docker logs phoenix-dotnet-app`
-     - Verify Phoenix Query Server is running: `docker ps | grep opdb-docker`
-
-2. **"InvalidProtocolBufferException" or "InvalidWireTypeException"**
-   - **Cause**: Phoenix Query Server 6.0.0 uses Protobuf as default transport. JSON endpoint may not be properly configured
-   - **Solution**:
-     - Wait longer for initialization (application now waits 30+ seconds automatically)
-     - Check if `hbase-site.xml` is properly mounted with JSON serialization enabled
-     - Verify Phoenix Query Server version supports JSON protocol
-     - See configuration in `docker-compose.yml` for `hbase-site.xml` mounting
-
-3. **"Cannot connect to server"**
-   - Verify Phoenix Query Server is running: `docker ps`
-   - Check port 8765 is accessible: `docker exec opdb-docker curl http://localhost:8765`
-   - Verify the server address in `appsettings.json` matches Docker network hostname
-   - Check network connectivity: `docker network inspect phoenixdotnet_obdb-net`
-
-4. **"Table not found"**
-   - Ensure tables exist in Phoenix
-   - Check table names are case-sensitive (try uppercase)
-   - Verify schema names if using schemas
-   - Use `GET /api/phoenix/tables` to list available tables
-
-5. **Connection Initialization Failures**
-   - The application automatically retries connections up to 10 times with 15-second delays
-   - Initial wait time: 30 seconds before first connection attempt
-   - Check logs for detailed error messages: `docker logs phoenix-dotnet-app`
-
-### Docker Issues
-
-1. **Container not starting**
-   - Check Docker is running: `docker ps`
-   - View logs: `docker-compose logs`
-   - Ensure ports 8099, 8100, 8765 are not already in use
-   - Check container health: `docker-compose ps`
-
-2. **Port conflicts**
-   - Change port mappings in `docker-compose.yml` if needed
-   - Update `appsettings.json` to match new ports
-   - Default ports:
-     - 8099: Phoenix .NET API
-     - 8100: SQL Search GUI
-     - 8765: Phoenix Query Server
-
-3. **Slow initialization**
-   - HBase/Phoenix takes 60-90 seconds to fully initialize
-   - Application waits automatically, but you can check status:
-     ```bash
-     docker logs opdb-docker | grep -i "started\|ready"
-     docker logs phoenix-dotnet-app | grep -i "connected\|initialized"
-     ```
-
-4. **hbase-site.xml configuration**
-   - The `hbase-site.xml` file is mounted into the container to enable JSON serialization
-   - Verify the file exists and is readable: `docker exec opdb-docker cat /opt/hbase/conf/hbase-site.xml`
-
-### For Detailed Troubleshooting
-
-See [Documentation/TROUBLESHOOTING.md](Documentation/TROUBLESHOOTING.md) for:
-- Complete error resolution guide
-- Driver installation instructions
-- Alternative connection methods (JDBC bridge, REST API)
-- Debugging steps and verification checklist
-
-## Container Deployment
-
-This application can be deployed in a Docker container. For Docker build setup and ODBC configuration, see [Documentation/SETUP.md](Documentation/SETUP.md). For a quick start with Docker, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md). For detailed deployment information, see [Documentation/DOCKER.md](Documentation/DOCKER.md) for:
-
-- Dockerfile configuration
-- Docker Compose setup
-- Container networking
-- ODBC driver installation in containers
-- Production deployment considerations
-
-**Important**: ODBC connectors require a Cloudera subscription to download. The ODBC drivers included in the `ODBC/` directory are provided for development purposes only.
 
 ## Phoenix Views
 
@@ -571,6 +477,32 @@ See [Documentation/README_VIEWS.md](Documentation/README_VIEWS.md) for:
 - Critical requirements for HBase table views
 - Query examples
 - Best practices for working with HBase-native tables
+
+## Troubleshooting
+
+> **📖 For comprehensive troubleshooting information, see [Documentation/TROUBLESHOOTING.md](Documentation/TROUBLESHOOTING.md)**
+
+The troubleshooting guide includes:
+- Common connection errors and solutions
+- Docker container issues
+- Protocol errors (JSON/Protobuf)
+- Table not found errors
+- ODBC driver installation and configuration
+- Alternative connection methods
+- Debugging steps and verification checklists
+- Complete error resolution guide
+
+## Container Deployment
+
+This application can be deployed in a Docker container. For Docker build setup and ODBC configuration, see [Documentation/SETUP.md](Documentation/SETUP.md). For a quick start with Docker, see [Documentation/QUICKSTART.md](Documentation/QUICKSTART.md). For detailed deployment information, see [Documentation/DOCKER.md](Documentation/DOCKER.md) for:
+
+- Dockerfile configuration
+- Docker Compose setup
+- Container networking
+- ODBC driver installation in containers
+- Production deployment considerations
+
+**Important**: ODBC connectors require a Cloudera subscription to download. The ODBC drivers included in the `ODBC/` directory are provided for development purposes only.
 
 ## Architecture
 

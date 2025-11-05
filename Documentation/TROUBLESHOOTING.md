@@ -2,6 +2,113 @@
 
 This guide helps you resolve common issues when connecting to Apache Phoenix from .NET applications.
 
+> **📖 If you're setting up for the first time, see [QUICKSTART.md](./QUICKSTART.md) for step-by-step instructions.**
+
+## Quick Reference
+
+For detailed troubleshooting information, see the sections below. Common issues include:
+- Connection errors
+- Docker container issues
+- Protocol errors
+- Table not found errors
+- ODBC driver issues
+
+---
+
+## Common Issues
+
+### 1. "Response status code does not indicate success: 500 (Server Error)"
+
+**Cause**: Phoenix Query Server may not be fully initialized or there's a protocol mismatch
+
+**Solution**: 
+- Wait 60-90 seconds for HBase/Phoenix to fully initialize after container start
+- Check logs: `docker logs opdb-docker` and `docker logs phoenix-dotnet-app`
+- Verify Phoenix Query Server is running: `docker ps | grep opdb-docker`
+
+### 2. "InvalidProtocolBufferException" or "InvalidWireTypeException"
+
+**Cause**: Phoenix Query Server 6.0.0 uses Protobuf as default transport. JSON endpoint may not be properly configured
+
+**Solution**:
+- Wait longer for initialization (application now waits 30+ seconds automatically)
+- Check if `hbase-site.xml` is properly mounted with JSON serialization enabled
+- Verify Phoenix Query Server version supports JSON protocol
+- See configuration in `docker-compose.yml` for `hbase-site.xml` mounting
+
+### 3. "Cannot connect to server"
+
+**Solution**:
+- Verify Phoenix Query Server is running: `docker ps`
+- Check port 8765 is accessible: `docker exec opdb-docker curl http://localhost:8765`
+- Verify the server address in `appsettings.json` matches Docker network hostname
+- Check network connectivity: `docker network inspect phoenixdotnet_obdb-net`
+
+### 4. "Table not found"
+
+**Solution**:
+- Ensure tables exist in Phoenix
+- Check table names are case-sensitive (try uppercase)
+- Verify schema names if using schemas
+- Use `GET /api/phoenix/tables` to list available tables
+
+### 5. Connection Initialization Failures
+
+**Solution**:
+- The application automatically retries connections up to 10 times with 15-second delays
+- Initial wait time: 30 seconds before first connection attempt
+- Check logs for detailed error messages: `docker logs phoenix-dotnet-app`
+
+---
+
+## Docker Issues
+
+### Container not starting
+
+**Solution**:
+- Check Docker is running: `docker ps`
+- View logs: `docker-compose logs`
+- Ensure ports 8099, 8100, 8765 are not already in use
+- Check container health: `docker-compose ps`
+
+### Port conflicts
+
+**Solution**:
+- Change port mappings in `docker-compose.yml` if needed
+- Update `appsettings.json` to match new ports
+- Default ports:
+  - 8099: Phoenix .NET API
+  - 8100: SQL Search GUI
+  - 8765: Phoenix Query Server
+
+### Slow initialization
+
+**Solution**:
+- HBase/Phoenix takes 60-90 seconds to fully initialize
+- Application waits automatically, but you can check status:
+  ```bash
+  docker logs opdb-docker | grep -i "started\|ready"
+  docker logs phoenix-dotnet-app | grep -i "connected\|initialized"
+  ```
+
+### hbase-site.xml configuration
+
+**Solution**:
+- The `hbase-site.xml` file is mounted into the container to enable JSON serialization
+- Verify the file exists and is readable: `docker exec opdb-docker cat /opt/hbase/conf/hbase-site.xml`
+
+---
+
+## Additional Troubleshooting Resources
+
+For more detailed troubleshooting information, see:
+- Complete error resolution guide (below)
+- Driver installation instructions
+- Alternative connection methods (JDBC bridge, REST API)
+- Debugging steps and verification checklist
+
+---
+
 ## Error: "Can't open lib 'Phoenix' : file not found"
 
 ### Problem
