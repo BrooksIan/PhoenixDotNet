@@ -136,6 +136,13 @@ The implementation scripts are located in this folder:
      -d '{"sql": "SELECT * FROM \"STUDENT_360\" WHERE \"rowkey\" = '\''STU001'\''"}'
    ```
 
+> **⚠️ Important Note**: HBase tables and Phoenix views are **ephemeral** and stored in the Docker container's filesystem. If you stop or restart the Docker environment (`docker-compose down`), all HBase tables and Phoenix views will be **lost** and need to be recreated. You will need to run both scripts again:
+> ```bash
+> ./create_student_360_tables.sh
+> ./create_student_360_single_view.sh
+> ```
+> For production deployments, ensure HBase data is persisted using Docker volumes or persistent storage.
+
 ### Manual Setup
 
 #### Step 1: Create HBase Table
