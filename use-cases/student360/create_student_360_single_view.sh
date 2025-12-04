@@ -180,61 +180,23 @@ sleep 2
 echo "Step 3: Creating single Phoenix view '$VIEW_NAME'..."
 echo ""
 
+# Create view with single-line SQL to avoid JSON parsing errors
 curl -s -X POST "${API_URL}/execute" \
   -H "Content-Type: application/json" \
-  -d '{
-    "sql": "CREATE VIEW IF NOT EXISTS \"STUDENT_360\" (
-      \"rowkey\" VARCHAR PRIMARY KEY,
-      \"personal\".\"first_name\" VARCHAR,
-      \"personal\".\"last_name\" VARCHAR,
-      \"personal\".\"middle_name\" VARCHAR,
-      \"personal\".\"date_of_birth\" VARCHAR,
-      \"personal\".\"gender\" VARCHAR,
-      \"contact\".\"email\" VARCHAR,
-      \"contact\".\"phone\" VARCHAR,
-      \"contact\".\"address_line1\" VARCHAR,
-      \"contact\".\"city\" VARCHAR,
-      \"contact\".\"state\" VARCHAR,
-      \"contact\".\"zip\" VARCHAR,
-      \"demographic\".\"enrollment_date\" VARCHAR,
-      \"demographic\".\"grade_level\" VARCHAR,
-      \"demographic\".\"status\" VARCHAR,
-      \"demographic\".\"ethnicity\" VARCHAR,
-      \"enrollment\".\"current_courses\" VARCHAR,
-      \"enrollment\".\"semester\" VARCHAR,
-      \"enrollment\".\"credits_attempted\" VARCHAR,
-      \"enrollment\".\"credits_completed\" VARCHAR,
-      \"grades\".\"course_MATH101\" VARCHAR,
-      \"grades\".\"course_ENG101\" VARCHAR,
-      \"grades\".\"course_SCI101\" VARCHAR,
-      \"grades\".\"semester_Fall2024_GPA\" VARCHAR,
-      \"performance\".\"cumulative_GPA\" VARCHAR,
-      \"performance\".\"SAT_score\" VARCHAR,
-      \"performance\".\"ACT_score\" VARCHAR,
-      \"requirements\".\"credits_earned\" VARCHAR,
-      \"requirements\".\"credits_required\" VARCHAR,
-      \"requirements\".\"graduation_year\" VARCHAR,
-      \"attendance\".\"days_present\" VARCHAR,
-      \"attendance\".\"days_absent\" VARCHAR,
-      \"attendance\".\"days_tardy\" VARCHAR,
-      \"attendance\".\"attendance_rate\" VARCHAR,
-      \"support\".\"services\" VARCHAR,
-      \"support\".\"interventions\" VARCHAR,
-      \"support\".\"special_education\" VARCHAR,
-      \"counseling\".\"last_session\" VARCHAR,
-      \"counseling\".\"total_sessions\" VARCHAR,
-      \"counseling\".\"concerns\" VARCHAR,
-      \"financial\".\"aid_status\" VARCHAR,
-      \"financial\".\"aid_amount\" VARCHAR,
-      \"financial\".\"payment_status\" VARCHAR,
-      \"activities\".\"clubs\" VARCHAR,
-      \"activities\".\"sports\" VARCHAR,
-      \"activities\".\"volunteer_hours\" VARCHAR
-    )"
-  }' | jq .
+  -d '{"sql": "CREATE VIEW IF NOT EXISTS \"STUDENT_360\" (\"rowkey\" VARCHAR PRIMARY KEY, \"personal\".\"first_name\" VARCHAR, \"personal\".\"last_name\" VARCHAR, \"personal\".\"middle_name\" VARCHAR, \"personal\".\"date_of_birth\" VARCHAR, \"personal\".\"gender\" VARCHAR, \"contact\".\"email\" VARCHAR, \"contact\".\"phone\" VARCHAR, \"contact\".\"address_line1\" VARCHAR, \"contact\".\"city\" VARCHAR, \"contact\".\"state\" VARCHAR, \"contact\".\"zip\" VARCHAR, \"demographic\".\"enrollment_date\" VARCHAR, \"demographic\".\"grade_level\" VARCHAR, \"demographic\".\"status\" VARCHAR, \"demographic\".\"ethnicity\" VARCHAR, \"enrollment\".\"current_courses\" VARCHAR, \"enrollment\".\"semester\" VARCHAR, \"enrollment\".\"credits_attempted\" VARCHAR, \"enrollment\".\"credits_completed\" VARCHAR, \"grades\".\"course_MATH101\" VARCHAR, \"grades\".\"course_ENG101\" VARCHAR, \"grades\".\"course_SCI101\" VARCHAR, \"grades\".\"semester_Fall2024_GPA\" VARCHAR, \"performance\".\"cumulative_GPA\" VARCHAR, \"performance\".\"SAT_score\" VARCHAR, \"performance\".\"ACT_score\" VARCHAR, \"requirements\".\"credits_earned\" VARCHAR, \"requirements\".\"credits_required\" VARCHAR, \"requirements\".\"graduation_year\" VARCHAR, \"attendance\".\"days_present\" VARCHAR, \"attendance\".\"days_absent\" VARCHAR, \"attendance\".\"days_tardy\" VARCHAR, \"attendance\".\"attendance_rate\" VARCHAR, \"support\".\"services\" VARCHAR, \"support\".\"interventions\" VARCHAR, \"support\".\"special_education\" VARCHAR, \"counseling\".\"last_session\" VARCHAR, \"counseling\".\"total_sessions\" VARCHAR, \"counseling\".\"concerns\" VARCHAR, \"financial\".\"aid_status\" VARCHAR, \"financial\".\"aid_amount\" VARCHAR, \"financial\".\"payment_status\" VARCHAR, \"activities\".\"clubs\" VARCHAR, \"activities\".\"sports\" VARCHAR, \"activities\".\"volunteer_hours\" VARCHAR)"}' | jq .
 
 echo ""
 sleep 3
+
+# Verify view was created
+echo "Verifying view creation..."
+VIEW_CHECK=$(curl -s "${API_URL}/views" | jq -r '.rows[] | select(.TABLE_NAME == "STUDENT_360") | .TABLE_NAME')
+if [ "$VIEW_CHECK" = "STUDENT_360" ]; then
+  echo "✓ View 'STUDENT_360' created successfully!"
+else
+  echo "✗ Warning: View 'STUDENT_360' may not have been created. Please check the error above."
+fi
+echo ""
 
 # Step 4: Query Examples - Single Row 360-Degree View
 echo "Step 4: Example queries - All student info in single row..."
