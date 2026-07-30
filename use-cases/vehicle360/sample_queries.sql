@@ -1,6 +1,64 @@
 -- Sample Phoenix SQL Queries for Vehicle 360 Use Case
--- Tables: ENGINE, TRANSMISSION, CHASSIS, VEHICLE
+-- Tables: ENGINE, TRANSMISSION, CHASSIS, VEHICLE (HBase-native)
 -- Pattern: Normalized component catalogs + VIN assembly with JOINs
+--
+-- Prerequisite: HBase tables must already exist and contain data.
+-- Run the CREATE VIEW statements below before the SELECT queries so
+-- Phoenix can map SQL column families/qualifiers onto the HBase tables.
+
+-- ============================================================
+-- CREATE PHOENIX VIEWS (required when tables exist only in HBase)
+-- ============================================================
+
+-- View 1: ENGINE (row key = engine ID)
+CREATE VIEW IF NOT EXISTS "ENGINE" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "specs"."manufacturer" VARCHAR,
+    "specs"."model" VARCHAR,
+    "specs"."displacement_l" VARCHAR,
+    "specs"."cylinders" VARCHAR,
+    "specs"."horsepower" VARCHAR,
+    "specs"."fuel_type" VARCHAR
+);
+
+-- View 2: TRANSMISSION (row key = transmission ID)
+CREATE VIEW IF NOT EXISTS "TRANSMISSION" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "specs"."manufacturer" VARCHAR,
+    "specs"."model" VARCHAR,
+    "specs"."type" VARCHAR,
+    "specs"."gears" VARCHAR,
+    "specs"."drive_type" VARCHAR
+);
+
+-- View 3: CHASSIS (row key = chassis ID)
+CREATE VIEW IF NOT EXISTS "CHASSIS" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "specs"."body_style" VARCHAR,
+    "specs"."material" VARCHAR,
+    "specs"."wheelbase_in" VARCHAR,
+    "specs"."curb_weight_lb" VARCHAR,
+    "specs"."doors" VARCHAR
+);
+
+-- View 4: VEHICLE (row key = VIN; ids.* reference component tables)
+CREATE VIEW IF NOT EXISTS "VEHICLE" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "ids"."engine_id" VARCHAR,
+    "ids"."transmission_id" VARCHAR,
+    "ids"."chassis_id" VARCHAR,
+    "info"."make" VARCHAR,
+    "info"."model" VARCHAR,
+    "info"."year" VARCHAR,
+    "info"."color" VARCHAR,
+    "info"."trim" VARCHAR
+);
+
+-- Optional: drop and recreate views if the schema changes
+-- DROP VIEW IF EXISTS "ENGINE";
+-- DROP VIEW IF EXISTS "TRANSMISSION";
+-- DROP VIEW IF EXISTS "CHASSIS";
+-- DROP VIEW IF EXISTS "VEHICLE";
 
 -- ============================================================
 -- BASIC COMPONENT LOOKUPS
