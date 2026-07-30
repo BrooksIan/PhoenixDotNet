@@ -166,65 +166,71 @@ ORDER BY "info"."make";
 -- FULL VEHICLE BUILD (JOINS) — complete vehicle view
 -- ============================================================
 
--- Query 11: Complete vehicle view for one VIN
--- Joins VEHICLE to ENGINE, TRANSMISSION, and CHASSIS by component IDs
+-- Query 11: Complete vehicle view for one VIN (all table fields)
 SELECT
     v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    v."info"."year",
-    e."specs"."horsepower",
-    t."specs"."type",
-    t."specs"."drive_type",
-    c."specs"."body_style"
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year,
+    v."info"."color" as color,
+    v."info"."trim" as trim,
+    v."ids"."engine_id" as engine_id,
+    v."ids"."transmission_id" as transmission_id,
+    v."ids"."chassis_id" as chassis_id,
+    e."specs"."manufacturer" as engine_mfr,
+    e."specs"."model" as engine_model,
+    e."specs"."displacement_l" as displacement_l,
+    e."specs"."cylinders" as cylinders,
+    e."specs"."horsepower" as horsepower,
+    e."specs"."fuel_type" as fuel_type,
+    t."specs"."manufacturer" as transmission_mfr,
+    t."specs"."model" as transmission_model,
+    t."specs"."type" as transmission_type,
+    t."specs"."gears" as gears,
+    t."specs"."drive_type" as drive_type,
+    c."specs"."body_style" as body_style,
+    c."specs"."material" as material,
+    c."specs"."wheelbase_in" as wheelbase_in,
+    c."specs"."curb_weight_lb" as curb_weight_lb,
+    c."specs"."doors" as doors
 FROM "VEHICLE" v
 JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
 JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
 JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
 WHERE v."rowkey" = '1HGCM82633A004352';
 
--- Query 12: Complete vehicle view for all vehicles
+-- Query 12: Complete vehicle view for all vehicles (all table fields)
 SELECT
     v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    v."info"."year",
-    e."specs"."horsepower",
-    t."specs"."type",
-    t."specs"."drive_type",
-    c."specs"."body_style"
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year,
+    v."info"."color" as color,
+    v."info"."trim" as trim,
+    v."ids"."engine_id" as engine_id,
+    v."ids"."transmission_id" as transmission_id,
+    v."ids"."chassis_id" as chassis_id,
+    e."specs"."manufacturer" as engine_mfr,
+    e."specs"."model" as engine_model,
+    e."specs"."displacement_l" as displacement_l,
+    e."specs"."cylinders" as cylinders,
+    e."specs"."horsepower" as horsepower,
+    e."specs"."fuel_type" as fuel_type,
+    t."specs"."manufacturer" as transmission_mfr,
+    t."specs"."model" as transmission_model,
+    t."specs"."type" as transmission_type,
+    t."specs"."gears" as gears,
+    t."specs"."drive_type" as drive_type,
+    c."specs"."body_style" as body_style,
+    c."specs"."material" as material,
+    c."specs"."wheelbase_in" as wheelbase_in,
+    c."specs"."curb_weight_lb" as curb_weight_lb,
+    c."specs"."doors" as doors
 FROM "VEHICLE" v
 JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
 JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
 JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
 ORDER BY v."info"."make", v."info"."model";
-
--- Query 12b: Detailed complete vehicle view (all component fields)
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    v."info"."year",
-    v."info"."color",
-    v."info"."trim",
-    e."rowkey" as engine_id,
-    e."specs"."manufacturer" as engine_mfr,
-    e."specs"."model" as engine_model,
-    e."specs"."horsepower",
-    e."specs"."fuel_type",
-    t."rowkey" as transmission_id,
-    t."specs"."type" as transmission_type,
-    t."specs"."gears",
-    t."specs"."drive_type",
-    c."rowkey" as chassis_id,
-    c."specs"."body_style",
-    c."specs"."material",
-    c."specs"."doors"
-FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
-WHERE v."rowkey" = '1HGCM82633A004352';
 
 -- Query 13: Full build for BMW M340i
 SELECT

@@ -3,8 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phoenix SQL Search GUI</title>
+    <title>Garage Bay — Vehicle 360</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --asphalt: #2a2d32;
+            --concrete: #d7d3cb;
+            --bay-floor: #ece8e1;
+            --steel: #4a5560;
+            --safety: #f0b429;
+            --safety-ink: #1a1408;
+            --oil: #1e2228;
+            --chalk: #f7f4ee;
+            --signal-red: #c23b22;
+            --signal-green: #2f6b3a;
+            --font-brand: "Barlow Condensed", sans-serif;
+            --font-body: "Figtree", sans-serif;
+            --font-mono: "IBM Plex Mono", monospace;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,183 +31,478 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: var(--font-body);
+            color: var(--oil);
             min-height: 100vh;
-            padding: 20px;
+            padding: 24px 16px 40px;
+            background-color: var(--concrete);
+            background-image:
+                repeating-linear-gradient(
+                    -18deg,
+                    transparent 0,
+                    transparent 46px,
+                    rgba(240, 180, 41, 0.12) 46px,
+                    rgba(240, 180, 41, 0.12) 52px
+                ),
+                linear-gradient(180deg, #cfc9bf 0%, #e8e4dc 40%, #d4cfc6 100%);
+            animation: floorDrift 28s linear infinite;
+        }
+
+        @keyframes floorDrift {
+            from { background-position: 0 0, 0 0; }
+            to { background-position: 120px 40px, 0 0; }
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1180px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: var(--bay-floor);
+            border: 3px solid var(--asphalt);
+            box-shadow: 0 18px 0 rgba(30, 34, 40, 0.18);
             overflow: hidden;
+            animation: bayIn 0.55s ease-out;
+        }
+
+        @keyframes bayIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
+            position: relative;
+            background: var(--asphalt);
+            color: var(--chalk);
+            padding: 28px 28px 24px;
+            overflow: hidden;
         }
 
-        .header h1 {
-            font-size: 2.5em;
+        .header::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    var(--safety) 0,
+                    var(--safety) 18px,
+                    var(--asphalt) 18px,
+                    var(--asphalt) 36px
+                );
+            opacity: 0.14;
+            animation: tapeScroll 8s linear infinite;
+        }
+
+        @keyframes tapeScroll {
+            from { background-position: 0 0; }
+            to { background-position: 72px 0; }
+        }
+
+        .header-inner {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand-block {
+            min-width: 0;
+        }
+
+        .bay-tag {
+            display: inline-block;
+            font-family: var(--font-brand);
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            color: var(--safety-ink);
+            background: var(--safety);
+            padding: 4px 10px;
             margin-bottom: 10px;
         }
 
+        .header h1 {
+            font-family: var(--font-brand);
+            font-weight: 800;
+            font-size: clamp(2.4rem, 5vw, 3.6rem);
+            line-height: 0.95;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
         .header p {
-            opacity: 0.9;
-            font-size: 1.1em;
+            margin-top: 8px;
+            font-size: 1.05rem;
+            color: #c8cdd3;
+            max-width: 36ch;
+        }
+
+        .bay-plaque {
+            font-family: var(--font-brand);
+            font-weight: 700;
+            font-size: 3.5rem;
+            line-height: 1;
+            letter-spacing: 0.04em;
+            color: var(--asphalt);
+            background: var(--safety);
+            border: 3px solid var(--chalk);
+            padding: 10px 18px 6px;
+            transform: rotate(-2deg);
+            animation: plaqueSettle 0.7s 0.15s both;
+        }
+
+        @keyframes plaqueSettle {
+            from { opacity: 0; transform: rotate(-8deg) scale(0.9); }
+            to { opacity: 1; transform: rotate(-2deg) scale(1); }
         }
 
         .content {
-            padding: 30px;
+            padding: 28px;
+        }
+
+        .info-box {
+            background: #f3efe7;
+            border: 2px solid var(--asphalt);
+            border-left: 10px solid var(--safety);
+            padding: 18px 20px;
+            margin-bottom: 24px;
+        }
+
+        .info-box h3 {
+            font-family: var(--font-brand);
+            font-size: 1.35rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            color: var(--asphalt);
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            line-height: 1.75;
+        }
+
+        .info-box code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: rgba(42, 45, 50, 0.08);
+            padding: 1px 5px;
         }
 
         .query-section {
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
 
         .query-section label {
             display: block;
             margin-bottom: 10px;
-            font-weight: 600;
-            color: #333;
-            font-size: 1.1em;
+            font-family: var(--font-brand);
+            font-size: 1.25rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--asphalt);
         }
 
         textarea {
             width: 100%;
-            min-height: 150px;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
+            min-height: 170px;
+            padding: 16px;
+            border: 2px solid var(--asphalt);
+            background: #1e2228;
+            color: #e8e4d9;
+            border-radius: 2px;
+            font-family: var(--font-mono);
+            font-size: 13.5px;
+            line-height: 1.5;
             resize: vertical;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--safety);
+            box-shadow: inset 0 0 0 1px var(--safety);
+        }
+
+        .use-case-section {
+            margin-top: 20px;
+            margin-bottom: 12px;
+            padding: 18px;
+            border: 2px solid var(--asphalt);
+            background:
+                linear-gradient(135deg, rgba(240, 180, 41, 0.08), transparent 40%),
+                #f7f3eb;
+        }
+
+        .use-case-section h3 {
+            font-family: var(--font-brand);
+            font-size: 1.6rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--asphalt);
+            margin-bottom: 4px;
+        }
+
+        .use-case-section p {
+            color: var(--steel);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .use-case-label {
+            font-family: var(--font-brand);
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--asphalt);
+            margin: 14px 0 8px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .quick-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .quick-query-btn {
+            padding: 11px 14px;
+            background: #fffdf8;
+            border: 2px solid var(--steel);
+            border-radius: 2px;
+            cursor: pointer;
+            transition: transform 0.15s, background 0.15s, border-color 0.15s;
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 600;
+            text-align: left;
+            color: var(--oil);
+            box-shadow: none;
+        }
+
+        .quick-query-btn:hover {
+            transform: translateY(-2px);
+            border-color: var(--asphalt);
+            background: #fff;
+        }
+
+        .quick-query-btn.accent {
+            border-color: var(--asphalt);
+            background: var(--safety);
+            color: var(--safety-ink);
+        }
+
+        .quick-query-btn.accent:hover {
+            background: #ffc94a;
         }
 
         .button-group {
             display: flex;
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 18px;
             flex-wrap: wrap;
         }
 
         button {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 12px 22px;
+            border: 2px solid var(--asphalt);
+            border-radius: 2px;
+            font-family: var(--font-brand);
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.15s, filter 0.15s;
+            box-shadow: 3px 3px 0 var(--asphalt);
         }
 
         button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0 var(--asphalt);
         }
 
         button:active {
-            transform: translateY(0);
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 var(--asphalt);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--safety);
+            color: var(--safety-ink);
         }
 
         .btn-secondary {
-            background: #6c757d;
-            color: white;
+            background: #e7e2d8;
+            color: var(--asphalt);
         }
 
         .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-info {
-            background: #17a2b8;
-            color: white;
+            background: var(--signal-green);
+            color: #f4fff6;
         }
 
         .status {
             margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 12px 14px;
+            border: 2px solid var(--asphalt);
             display: none;
+            font-weight: 600;
+            animation: statusIn 0.25s ease-out;
+        }
+
+        @keyframes statusIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #dff0e3;
+            color: #1d4a27;
         }
 
         .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #f8ddd8;
+            color: #7a2418;
         }
 
         .status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
+            background: #fff3cc;
+            color: #5a4208;
         }
 
         .results-section {
-            margin-top: 30px;
+            margin-top: 28px;
+        }
+
+        .results-section h2 {
+            font-family: var(--font-brand);
+            font-size: 1.7rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--asphalt);
+            border-bottom: 4px solid var(--safety);
+            display: inline-block;
+            padding-bottom: 2px;
+            margin-bottom: 8px;
         }
 
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
-            background: white;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
+            margin-top: 12px;
+            background: #fffdf8;
+            border: 2px solid var(--asphalt);
         }
 
         .results-table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
+            background: var(--asphalt);
+            color: var(--safety);
+            font-family: var(--font-brand);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 12px 14px;
             text-align: left;
-            font-weight: 600;
         }
 
         .results-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 11px 14px;
+            border-bottom: 1px solid #d8d2c6;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
         }
 
         .results-table tr:hover {
-            background: #f5f5f5;
+            background: #fff6d8;
         }
 
         .results-table tr:last-child td {
             border-bottom: none;
         }
 
+        .build-sheet-list {
+            display: grid;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .build-sheet {
+            background: #fffdf8;
+            border: 2px solid var(--asphalt);
+            border-left: 8px solid var(--safety);
+            padding: 10px 14px;
+            line-height: 1.35;
+        }
+
+        .build-sheet .line1,
+        .build-sheet .line2,
+        .build-sheet .line3 {
+            overflow-wrap: anywhere;
+        }
+
+        .build-sheet .line1 {
+            font-family: var(--font-brand);
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: var(--asphalt);
+        }
+
+        .build-sheet .line1 .vin {
+            color: var(--safety-ink);
+            background: var(--safety);
+            padding: 0 6px;
+            margin-right: 8px;
+        }
+
+        .build-sheet .line1 .ids {
+            display: inline;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            color: var(--steel);
+            margin-left: 8px;
+        }
+
+        .build-sheet .line2,
+        .build-sheet .line3 {
+            font-family: var(--font-mono);
+            font-size: 0.84rem;
+            color: var(--oil);
+            margin-top: 3px;
+        }
+
+        .build-sheet .line3 {
+            color: var(--steel);
+        }
+
+        .build-sheet .tag {
+            font-family: var(--font-brand);
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--asphalt);
+            margin-right: 0.35em;
+        }
+
+        .build-sheet .sep {
+            color: #9a948a;
+            margin: 0 0.4em;
+        }
+
         .loading {
             text-align: center;
             padding: 40px;
-            color: #667eea;
-            font-size: 1.2em;
+            color: var(--asphalt);
+            font-family: var(--font-brand);
+            font-size: 1.4rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
         }
 
         .loading::after {
@@ -202,99 +516,100 @@
             60%, 100% { content: '...'; }
         }
 
-        .info-box {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
+        .row-count {
+            margin-top: 10px;
+            color: var(--steel);
+            font-weight: 600;
         }
 
-        .info-box h3 {
-            margin-bottom: 10px;
-            color: #667eea;
-        }
+        @media (max-width: 640px) {
+            .bay-plaque {
+                font-size: 2.4rem;
+            }
 
-        .info-box ul {
-            margin-left: 20px;
-            line-height: 1.8;
-        }
+            .content {
+                padding: 18px;
+            }
 
-        .quick-queries {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .quick-query-btn {
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 14px;
-            text-align: left;
-        }
-
-        .quick-query-btn:hover {
-            background: #e9ecef;
-            border-color: #667eea;
+            button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 Phoenix SQL Search GUI</h1>
-            <p>Apache Phoenix Query Interface</p>
+            <div class="header-inner">
+                <div class="brand-block">
+                    <div class="bay-tag">Service lane open</div>
+                    <h1>Garage Bay</h1>
+                    <p>Vehicle 360 build console — pull VINs, engines, transmissions, and chassis from the rack.</p>
+                </div>
+                <div class="bay-plaque">BAY 360</div>
+            </div>
         </div>
         <div class="content">
             <div class="info-box">
-                <h3>Quick Start</h3>
+                <h3>Bay checklist</h3>
                 <ul>
-                    <li>Enter SQL queries in the text area below</li>
-                    <li>Click "Execute Query" to run SELECT statements</li>
-                    <li>Click "Execute Command" for CREATE, INSERT, UPDATE, DELETE</li>
-                    <li>Use "List Tables" to see all available tables</li>
-                    <li>Use "List Views" to see all Phoenix views (for HBase-native tables)</li>
+                    <li>Seed parts inventory: <code>./use-cases/vehicle360/create_vehicle360_tables.sh</code></li>
+                    <li>Mount Phoenix views with the yellow buttons, then hit <strong>Execute Command</strong></li>
+                    <li>Run VIN / JOIN lookups with <strong>Execute Query</strong></li>
+                    <li>Confirm racks with List Views: ENGINE, TRANSMISSION, CHASSIS, VEHICLE</li>
                 </ul>
-                <h3 style="margin-top: 15px; color: #667eea;">Important: UPPERCASE Table Names</h3>
+                <h3 style="margin-top: 14px;">Parts layout</h3>
                 <ul>
-                    <li><strong>Phoenix converts unquoted identifiers to UPPERCASE</strong></li>
-                    <li>When you create: <code>CREATE TABLE users (...)</code> → Query as: <code>SELECT * FROM USERS</code></li>
-                    <li>Always use <strong>UPPERCASE</strong> table names when querying (e.g., <code>USERS</code>, <code>TABLE_NAME</code>)</li>
-                    <li>Query tables directly instead of relying on the list endpoint</li>
+                    <li><code>ENGINE</code>, <code>TRANSMISSION</code>, <code>CHASSIS</code> — component catalogs</li>
+                    <li><code>VEHICLE</code> — VIN key; links one of each component ID</li>
+                    <li>Complete build sheet = JOIN across all four views</li>
                 </ul>
             </div>
 
             <div class="query-section">
-                <label for="sqlQuery">SQL Query:</label>
-                <textarea id="sqlQuery" placeholder="Enter your SQL query here...&#10;Example: SELECT * FROM SYSTEM.CATALOG LIMIT 10"></textarea>
-                
+                <label for="sqlQuery">Work order (SQL)</label>
+                <textarea id="sqlQuery" placeholder="Enter your SQL query here...&#10;Example: SELECT * FROM &quot;VEHICLE&quot; WHERE &quot;rowkey&quot; = '1HGCM82633A004352'"></textarea>
+
+                <div class="use-case-section">
+                    <h3>Vehicle 360 rack</h3>
+                    <p>
+                        Create views first if tables exist only in HBase, then look up parts or pull a full build sheet.
+                    </p>
+
+                    <div class="use-case-label">1. Mount Phoenix views (Execute Command)</div>
+                    <div class="quick-queries">
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createEngineView')">Mount ENGINE view</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createTransmissionView')">Mount TRANSMISSION view</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createChassisView')">Mount CHASSIS view</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createVehicleView')">Mount VEHICLE view</button>
+                    </div>
+
+                    <div class="use-case-label">2. Parts &amp; VIN pulls (Execute Query)</div>
+                    <div class="quick-queries">
+                        <button class="quick-query-btn" onclick="setNamedQuery('engineById')">Engine ENG001</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('transmissionById')">Transmission TRN002</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('chassisById')">Chassis CHS003</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('vehicleByVin')">Vehicle by VIN</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('listVehicles')">Lot inventory</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('vehiclesByEngine')">Builds using ENG001</button>
+                    </div>
+
+                    <div class="use-case-label">3. Full build sheets (JOINs)</div>
+                    <div class="quick-queries">
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('completeVehicleOne')">Build sheet — one VIN</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('completeVehicleAll')">Build sheet — all vehicles</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('highHorsepower')">High horsepower (300+)</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('awdVehicles')">AWD vehicles</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('countByMake')">Count by make</button>
+                    </div>
+                </div>
+
+                <div class="use-case-label" style="margin-top: 18px;">Shop utilities</div>
                 <div class="quick-queries">
-                    <button class="quick-query-btn" onclick="setQuery('SELECT * FROM SYSTEM.CATALOG LIMIT 10')">
-                        📋 Show System Catalog
-                    </button>
-                    <button class="quick-query-btn" onclick="setQuery('SELECT TABLE_NAME, TABLE_TYPE FROM SYSTEM.CATALOG WHERE (TABLE_TYPE = \'u\' OR TABLE_TYPE = \'v\') ORDER BY TABLE_NAME')">
-                        📊 List Tables & Views
-                    </button>
-                    <button class="quick-query-btn" onclick="setQuery('SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'u\' ORDER BY TABLE_NAME')">
-                        🗂️ User Tables Only
-                    </button>
-                    <button class="quick-query-btn" onclick="setQuery('SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'v\' ORDER BY TABLE_NAME')">
-                        👁️ Phoenix Views Only
-                    </button>
-                    <button class="quick-query-btn" onclick="setQuery('SELECT * FROM USERS ORDER BY id')">
-                        📝 Example: Query USERS Table
-                    </button>
-                    <button class="quick-query-btn" onclick="setQuery('CREATE TABLE IF NOT EXISTS example_table (id VARCHAR PRIMARY KEY, name VARCHAR)')">
-                        ➕ Example: Create Table
-                    </button>
-                    <button class="quick-query-btn" onclick="setQuery('UPSERT INTO USERS (id, name) VALUES (\'1\', \'Test\')')">
-                        💾 Example: Insert Data
-                    </button>
+                    <button class="quick-query-btn" onclick="setNamedQuery('systemCatalog')">System catalog</button>
+                    <button class="quick-query-btn" onclick="setNamedQuery('listTablesViews')">List tables &amp; views</button>
+                    <button class="quick-query-btn" onclick="setNamedQuery('userTables')">User tables only</button>
+                    <button class="quick-query-btn" onclick="setNamedQuery('phoenixViews')">Phoenix views only</button>
                 </div>
 
                 <div class="button-group">
@@ -302,14 +617,14 @@
                     <button class="btn-success" onclick="executeCommand()">Execute Command</button>
                     <button class="btn-secondary" onclick="listTables()">List Tables</button>
                     <button class="btn-secondary" onclick="listViews()">List Views</button>
-                    <button class="btn-secondary" onclick="clearResults()">Clear Results</button>
+                    <button class="btn-secondary" onclick="clearResults()">Clear Bay</button>
                 </div>
 
                 <div id="status" class="status"></div>
             </div>
 
             <div class="results-section">
-                <h2>Results</h2>
+                <h2>Inspection results</h2>
                 <div id="results"></div>
             </div>
         </div>
@@ -318,8 +633,159 @@
     <script>
         const API_BASE = '/api/phoenix';
 
+        const NAMED_QUERIES = {
+            createEngineView: `CREATE VIEW IF NOT EXISTS "ENGINE" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "specs"."manufacturer" VARCHAR,
+  "specs"."model" VARCHAR,
+  "specs"."displacement_l" VARCHAR,
+  "specs"."cylinders" VARCHAR,
+  "specs"."horsepower" VARCHAR,
+  "specs"."fuel_type" VARCHAR
+)`,
+            createTransmissionView: `CREATE VIEW IF NOT EXISTS "TRANSMISSION" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "specs"."manufacturer" VARCHAR,
+  "specs"."model" VARCHAR,
+  "specs"."type" VARCHAR,
+  "specs"."gears" VARCHAR,
+  "specs"."drive_type" VARCHAR
+)`,
+            createChassisView: `CREATE VIEW IF NOT EXISTS "CHASSIS" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "specs"."body_style" VARCHAR,
+  "specs"."material" VARCHAR,
+  "specs"."wheelbase_in" VARCHAR,
+  "specs"."curb_weight_lb" VARCHAR,
+  "specs"."doors" VARCHAR
+)`,
+            createVehicleView: `CREATE VIEW IF NOT EXISTS "VEHICLE" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "ids"."engine_id" VARCHAR,
+  "ids"."transmission_id" VARCHAR,
+  "ids"."chassis_id" VARCHAR,
+  "info"."make" VARCHAR,
+  "info"."model" VARCHAR,
+  "info"."year" VARCHAR,
+  "info"."color" VARCHAR,
+  "info"."trim" VARCHAR
+)`,
+            engineById: `SELECT "rowkey" as engine_id, "specs"."manufacturer", "specs"."model", "specs"."horsepower", "specs"."fuel_type"
+FROM "ENGINE"
+WHERE "rowkey" = 'ENG001'`,
+            transmissionById: `SELECT "rowkey" as transmission_id, "specs"."manufacturer", "specs"."model", "specs"."type", "specs"."drive_type"
+FROM "TRANSMISSION"
+WHERE "rowkey" = 'TRN002'`,
+            chassisById: `SELECT "rowkey" as chassis_id, "specs"."body_style", "specs"."material", "specs"."doors", "specs"."curb_weight_lb"
+FROM "CHASSIS"
+WHERE "rowkey" = 'CHS003'`,
+            vehicleByVin: `SELECT "rowkey" as vin, "info"."make", "info"."model", "info"."year", "info"."color", "info"."trim",
+       "ids"."engine_id", "ids"."transmission_id", "ids"."chassis_id"
+FROM "VEHICLE"
+WHERE "rowkey" = '1HGCM82633A004352'`,
+            listVehicles: `SELECT "rowkey" as vin, "info"."make", "info"."model", "info"."year",
+       "ids"."engine_id", "ids"."transmission_id", "ids"."chassis_id"
+FROM "VEHICLE"
+ORDER BY "info"."make", "info"."model"`,
+            vehiclesByEngine: `SELECT "rowkey" as vin, "info"."make", "info"."model", "info"."year", "ids"."engine_id"
+FROM "VEHICLE"
+WHERE "ids"."engine_id" = 'ENG001'
+ORDER BY "rowkey"`,
+            completeVehicleOne: `SELECT
+  v."rowkey" as vin,
+  v."info"."make" as make,
+  v."info"."model" as model,
+  v."info"."year" as year,
+  v."info"."color" as color,
+  v."info"."trim" as trim,
+  v."ids"."engine_id" as engine_id,
+  v."ids"."transmission_id" as transmission_id,
+  v."ids"."chassis_id" as chassis_id,
+  e."specs"."manufacturer" as engine_mfr,
+  e."specs"."model" as engine_model,
+  e."specs"."displacement_l" as displacement_l,
+  e."specs"."cylinders" as cylinders,
+  e."specs"."horsepower" as horsepower,
+  e."specs"."fuel_type" as fuel_type,
+  t."specs"."manufacturer" as transmission_mfr,
+  t."specs"."model" as transmission_model,
+  t."specs"."type" as transmission_type,
+  t."specs"."gears" as gears,
+  t."specs"."drive_type" as drive_type,
+  c."specs"."body_style" as body_style,
+  c."specs"."material" as material,
+  c."specs"."wheelbase_in" as wheelbase_in,
+  c."specs"."curb_weight_lb" as curb_weight_lb,
+  c."specs"."doors" as doors
+FROM "VEHICLE" v
+JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
+JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
+JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
+WHERE v."rowkey" = '1HGCM82633A004352'`,
+            completeVehicleAll: `SELECT
+  v."rowkey" as vin,
+  v."info"."make" as make,
+  v."info"."model" as model,
+  v."info"."year" as year,
+  v."info"."color" as color,
+  v."info"."trim" as trim,
+  v."ids"."engine_id" as engine_id,
+  v."ids"."transmission_id" as transmission_id,
+  v."ids"."chassis_id" as chassis_id,
+  e."specs"."manufacturer" as engine_mfr,
+  e."specs"."model" as engine_model,
+  e."specs"."displacement_l" as displacement_l,
+  e."specs"."cylinders" as cylinders,
+  e."specs"."horsepower" as horsepower,
+  e."specs"."fuel_type" as fuel_type,
+  t."specs"."manufacturer" as transmission_mfr,
+  t."specs"."model" as transmission_model,
+  t."specs"."type" as transmission_type,
+  t."specs"."gears" as gears,
+  t."specs"."drive_type" as drive_type,
+  c."specs"."body_style" as body_style,
+  c."specs"."material" as material,
+  c."specs"."wheelbase_in" as wheelbase_in,
+  c."specs"."curb_weight_lb" as curb_weight_lb,
+  c."specs"."doors" as doors
+FROM "VEHICLE" v
+JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
+JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
+JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
+ORDER BY v."info"."make", v."info"."model"`,
+            highHorsepower: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", v."info"."year",
+       e."specs"."horsepower", e."specs"."fuel_type"
+FROM "VEHICLE" v
+JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
+WHERE TO_NUMBER(e."specs"."horsepower") >= 300
+ORDER BY TO_NUMBER(e."specs"."horsepower") DESC`,
+            awdVehicles: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", t."specs"."type", t."specs"."drive_type"
+FROM "VEHICLE" v
+JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
+WHERE t."specs"."drive_type" = 'AWD'
+ORDER BY v."info"."make"`,
+            countByMake: `SELECT "info"."make", COUNT(*) as vehicle_count
+FROM "VEHICLE"
+GROUP BY "info"."make"
+ORDER BY "info"."make"`,
+            systemCatalog: `SELECT * FROM SYSTEM.CATALOG LIMIT 10`,
+            listTablesViews: `SELECT TABLE_NAME, TABLE_TYPE FROM SYSTEM.CATALOG WHERE (TABLE_TYPE = 'u' OR TABLE_TYPE = 'v') ORDER BY TABLE_NAME`,
+            userTables: `SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TABLE_TYPE = 'u' ORDER BY TABLE_NAME`,
+            phoenixViews: `SELECT TABLE_NAME FROM SYSTEM.CATALOG WHERE TABLE_TYPE = 'v' ORDER BY TABLE_NAME`
+        };
+
         function setQuery(query) {
             document.getElementById('sqlQuery').value = query;
+        }
+
+        function setNamedQuery(name) {
+            const sql = NAMED_QUERIES[name];
+            if (!sql) {
+                showStatus(`Unknown query shortcut: ${name}`, 'error');
+                return;
+            }
+            setQuery(sql);
+            showStatus(`Work order loaded: ${name}. Use Execute Command for CREATE VIEW, Execute Query for SELECT.`, 'info');
         }
 
         function showStatus(message, type) {
@@ -333,78 +799,176 @@
         }
 
         function showLoading() {
-            document.getElementById('results').innerHTML = '<div class="loading">Executing query</div>';
+            document.getElementById('results').innerHTML = '<div class="loading">Pulling from the rack</div>';
+        }
+
+        function fieldValue(row, columns, patterns) {
+            const names = columns.map(c => c.name);
+            for (const pattern of patterns) {
+                const exact = names.find(n => n.toLowerCase() === pattern);
+                if (exact && row[exact] != null && row[exact] !== '') return String(row[exact]);
+            }
+            for (const pattern of patterns) {
+                const match = names.find(n => {
+                    const lower = n.toLowerCase();
+                    return lower.endsWith('.' + pattern) || lower.endsWith('"' + pattern) || lower.includes('.' + pattern) || lower.endsWith(pattern);
+                });
+                if (match && row[match] != null && row[match] !== '') return String(row[match]);
+            }
+            return '';
+        }
+
+        function isBuildSheetResult(columns) {
+            const blob = columns.map(c => c.name.toLowerCase()).join(' ');
+            const hasVin = blob.includes('vin') || blob.includes('rowkey');
+            const hasBuildFields =
+                blob.includes('horsepower') ||
+                blob.includes('body_style') ||
+                blob.includes('drive_type') ||
+                (blob.includes('make') && blob.includes('model') && blob.includes('type'));
+            return hasVin && hasBuildFields && columns.length >= 5;
+        }
+
+        function joinBits(parts) {
+            return parts.filter(Boolean).join(' · ');
+        }
+
+        function renderBuildSheets(columns, rows) {
+            let html = '<div class="build-sheet-list">';
+            rows.forEach(row => {
+                const vin = fieldValue(row, columns, ['vin']);
+                const make = fieldValue(row, columns, ['make']);
+                const model = fieldValue(row, columns, ['model']);
+                const year = fieldValue(row, columns, ['year']);
+                const color = fieldValue(row, columns, ['color']);
+                const trim = fieldValue(row, columns, ['trim']);
+                const engineId = fieldValue(row, columns, ['engine_id']);
+                const transmissionId = fieldValue(row, columns, ['transmission_id']);
+                const chassisId = fieldValue(row, columns, ['chassis_id']);
+
+                const engineMfr = fieldValue(row, columns, ['engine_mfr']);
+                const engineModel = fieldValue(row, columns, ['engine_model']);
+                const displacement = fieldValue(row, columns, ['displacement_l']);
+                const cylinders = fieldValue(row, columns, ['cylinders']);
+                const hp = fieldValue(row, columns, ['horsepower']);
+                const fuel = fieldValue(row, columns, ['fuel_type']);
+
+                const transMfr = fieldValue(row, columns, ['transmission_mfr']);
+                const transModel = fieldValue(row, columns, ['transmission_model']);
+                const transType = fieldValue(row, columns, ['transmission_type', 'type']);
+                const gears = fieldValue(row, columns, ['gears']);
+                const drive = fieldValue(row, columns, ['drive_type']);
+
+                const body = fieldValue(row, columns, ['body_style']);
+                const material = fieldValue(row, columns, ['material']);
+                const wheelbase = fieldValue(row, columns, ['wheelbase_in']);
+                const weight = fieldValue(row, columns, ['curb_weight_lb']);
+                const doors = fieldValue(row, columns, ['doors']);
+
+                const titleBits = joinBits([make, model, year, color, trim]);
+                const idBits = joinBits([
+                    engineId ? `ENG ${engineId}` : '',
+                    transmissionId ? `TRN ${transmissionId}` : '',
+                    chassisId ? `CHS ${chassisId}` : ''
+                ]);
+                const engineBits = joinBits([
+                    engineMfr,
+                    engineModel,
+                    displacement ? `${displacement}L` : '',
+                    cylinders ? `${cylinders} cyl` : '',
+                    hp ? `${hp} HP` : '',
+                    fuel
+                ]);
+                const transBits = joinBits([
+                    transMfr,
+                    transModel,
+                    transType,
+                    gears ? `${gears} gears` : '',
+                    drive
+                ]);
+                const chassisBits = joinBits([
+                    body,
+                    material,
+                    wheelbase ? `${wheelbase} in WB` : '',
+                    weight ? `${weight} lb` : '',
+                    doors ? `${doors} doors` : ''
+                ]);
+
+                html += '<div class="build-sheet">';
+                html += `<div class="line1">${vin ? `<span class="vin">${escapeHtml(vin)}</span>` : ''}${escapeHtml(titleBits || 'Vehicle')}${idBits ? `<span class="ids">${escapeHtml(idBits)}</span>` : ''}</div>`;
+                html += `<div class="line2"><span class="tag">Engine</span>${escapeHtml(engineBits || '—')}</div>`;
+                html += `<div class="line3"><span class="tag">Trans</span>${escapeHtml(transBits || '—')}<span class="sep"> | </span><span class="tag">Chassis</span>${escapeHtml(chassisBits || '—')}</div>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            return html;
         }
 
         function displayResults(data) {
             const resultsDiv = document.getElementById('results');
-            
+
             if (data.error) {
-                resultsDiv.innerHTML = `<div class="status error">Error: ${data.error}</div>`;
+                resultsDiv.innerHTML = `<div class="status error" style="display:block">Error: ${data.error}</div>`;
                 showStatus(`Error: ${data.error}`, 'error');
                 return;
             }
 
-            // Check if we have columns to display
             if (!data.columns || data.columns.length === 0) {
-                let message = 'Query executed successfully but returned no results.<br><br>';
-                message += 'This could mean:<ul style="text-align: left; display: inline-block; margin-top: 10px;">';
-                message += '<li>No tables exist yet - try creating a table first</li>';
-                message += '<li>No data matches your query criteria</li>';
-                message += '<li>Data may need time to commit - try again in a few seconds</li>';
-                message += '<li><strong>Remember: Use UPPERCASE table names!</strong> (e.g., <code>USERS</code> not <code>users</code>)</li>';
-                message += '</ul><br>';
-                message += 'Try: <code>CREATE TABLE IF NOT EXISTS test_table (id VARCHAR PRIMARY KEY, name VARCHAR)</code><br>';
-                message += 'Then query: <code>SELECT * FROM TEST_TABLE</code>';
-                resultsDiv.innerHTML = `<div class="status info">${message}</div>`;
+                let message = 'Query ran, but the bay came back empty.<br><br>';
+                message += 'Check:<ul style="text-align: left; display: inline-block; margin-top: 10px;">';
+                message += '<li>Tables seeded via create_vehicle360_tables.sh</li>';
+                message += '<li>Phoenix views mounted (yellow buttons + Execute Command)</li>';
+                message += '<li>Quoted UPPERCASE names like <code>"VEHICLE"</code></li>';
+                message += '</ul>';
+                resultsDiv.innerHTML = `<div class="status info" style="display:block">${message}</div>`;
                 showStatus('Query executed successfully but returned no results.', 'info');
                 return;
             }
 
-            let html = '<table class="results-table"><thead><tr>';
-            
-            // Header row - always show columns if they exist
-            data.columns.forEach(col => {
-                html += `<th>${escapeHtml(col.name)}</th>`;
-            });
-            html += '</tr></thead><tbody>';
-
-            // Data rows - show rows if they exist
-            if (data.rows && data.rows.length > 0) {
-                data.rows.forEach(row => {
-                    html += '<tr>';
-                    data.columns.forEach(col => {
-                        const value = row[col.name];
-                        html += `<td>${escapeHtml(value === null || value === undefined ? 'NULL' : String(value))}</td>`;
-                    });
-                    html += '</tr>';
-                });
-            } else {
-                // Show empty row message when we have columns but no data
-                html += `<tr><td colspan="${data.columns.length}" style="text-align: center; padding: 30px; color: #666; font-style: italic;">No rows returned</td></tr>`;
-            }
-
-            html += '</tbody></table>';
-            
             const rowCount = data.rowCount || (data.rows ? data.rows.length : 0);
-            html += `<p style="margin-top: 10px; color: #666;">Total rows: ${rowCount}</p>`;
-            
-            // Add helpful message if no results but query executed successfully
-            if (rowCount === 0 && data.message) {
-                html += `<div class="status info" style="margin-top: 15px;">${escapeHtml(data.message)}</div>`;
+            let html = '';
+
+            if (data.rows && data.rows.length > 0 && isBuildSheetResult(data.columns)) {
+                html = renderBuildSheets(data.columns, data.rows);
+            } else {
+                html = '<table class="results-table"><thead><tr>';
+                data.columns.forEach(col => {
+                    html += `<th>${escapeHtml(col.name)}</th>`;
+                });
+                html += '</tr></thead><tbody>';
+
+                if (data.rows && data.rows.length > 0) {
+                    data.rows.forEach(row => {
+                        html += '<tr>';
+                        data.columns.forEach(col => {
+                            const value = row[col.name];
+                            html += `<td>${escapeHtml(value === null || value === undefined ? 'NULL' : String(value))}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+                } else {
+                    html += `<tr><td colspan="${data.columns.length}" style="text-align: center; padding: 30px; color: #666; font-style: italic;">No rows returned</td></tr>`;
+                }
+
+                html += '</tbody></table>';
             }
-            
+
+            html += `<p class="row-count">Units returned: ${rowCount}</p>`;
+
+            if (rowCount === 0 && data.message) {
+                html += `<div class="status info" style="display:block;margin-top:15px">${escapeHtml(data.message)}</div>`;
+            }
+
             resultsDiv.innerHTML = html;
-            
+
             if (rowCount === 0) {
-                // More specific message when columns are shown vs when no structure is returned
                 if (data.columns && data.columns.length > 0) {
-                    showStatus(`Query executed successfully. Returned ${data.columns.length} column(s) but 0 rows.`, 'info');
+                    showStatus(`Query OK. ${data.columns.length} column(s), 0 rows.`, 'info');
                 } else {
                     showStatus('Query executed successfully but returned no results.', 'info');
                 }
             } else {
-                showStatus(`Query executed successfully. Returned ${rowCount} row(s).`, 'success');
+                showStatus(`Inspection complete. ${rowCount} row(s).`, 'success');
             }
         }
 
@@ -416,9 +980,9 @@
 
         async function executeQuery() {
             const query = document.getElementById('sqlQuery').value.trim();
-            
+
             if (!query) {
-                showStatus('Please enter a SQL query.', 'error');
+                showStatus('Enter a work order (SQL query) first.', 'error');
                 return;
             }
 
@@ -434,24 +998,24 @@
                 });
 
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.error || 'Request failed');
                 }
 
                 displayResults(data);
             } catch (error) {
-                document.getElementById('results').innerHTML = 
-                    `<div class="status error">Error: ${error.message}</div>`;
+                document.getElementById('results').innerHTML =
+                    `<div class="status error" style="display:block">Error: ${error.message}</div>`;
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
 
         async function executeCommand() {
             const query = document.getElementById('sqlQuery').value.trim();
-            
+
             if (!query) {
-                showStatus('Please enter a SQL command.', 'error');
+                showStatus('Enter a SQL command first.', 'error');
                 return;
             }
 
@@ -467,25 +1031,24 @@
                 });
 
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.error || 'Request failed');
                 }
 
-                document.getElementById('results').innerHTML = 
-                    `<div class="status success">${data.message || 'Command executed successfully!'}</div>`;
+                document.getElementById('results').innerHTML =
+                    `<div class="status success" style="display:block">${data.message || 'Command executed successfully!'}</div>`;
                 showStatus(data.message || 'Command executed successfully!', 'success');
             } catch (error) {
-                document.getElementById('results').innerHTML = 
-                    `<div class="status error">Error: ${error.message}</div>`;
+                document.getElementById('results').innerHTML =
+                    `<div class="status error" style="display:block">Error: ${error.message}</div>`;
                 showStatus(`Error: ${error.message}`, 'error');
             }
         }
 
         async function listTables() {
-            // Use the API endpoint to get tables
             showLoading();
-            
+
             try {
                 const response = await fetch(`${API_BASE}/tables`, {
                     method: 'GET',
@@ -495,12 +1058,11 @@
                 });
 
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.error || 'Request failed');
                 }
 
-                // If API returns empty, try direct query with better filter
                 if (!data.rows || data.rows.length === 0) {
                     setQuery('SELECT TABLE_NAME, TABLE_TYPE FROM SYSTEM.CATALOG WHERE (TABLE_TYPE = \'u\' OR TABLE_TYPE = \'v\') ORDER BY TABLE_NAME');
                     await executeQuery();
@@ -508,16 +1070,14 @@
                     displayResults(data);
                 }
             } catch (error) {
-                // Fallback to direct query if API fails
                 setQuery('SELECT TABLE_NAME, TABLE_TYPE FROM SYSTEM.CATALOG WHERE (TABLE_TYPE = \'u\' OR TABLE_TYPE = \'v\') ORDER BY TABLE_NAME');
                 await executeQuery();
             }
         }
 
         async function listViews() {
-            // Use the API endpoint to get views
             showLoading();
-            
+
             try {
                 const response = await fetch(`${API_BASE}/views`, {
                     method: 'GET',
@@ -527,12 +1087,11 @@
                 });
 
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.error || 'Request failed');
                 }
 
-                // If API returns empty, try direct query as fallback
                 if (!data.rows || data.rows.length === 0) {
                     setQuery('SELECT TABLE_NAME, TABLE_SCHEM, TABLE_TYPE FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'v\' ORDER BY TABLE_NAME');
                     await executeQuery();
@@ -541,7 +1100,6 @@
                     showStatus('Views retrieved successfully!', 'success');
                 }
             } catch (error) {
-                // Fallback to direct query if API fails
                 setQuery('SELECT TABLE_NAME, TABLE_SCHEM, TABLE_TYPE FROM SYSTEM.CATALOG WHERE TABLE_TYPE = \'v\' ORDER BY TABLE_NAME');
                 await executeQuery();
             }
@@ -553,7 +1111,6 @@
             document.getElementById('status').style.display = 'none';
         }
 
-        // Allow Ctrl+Enter to execute query
         document.getElementById('sqlQuery').addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'Enter') {
                 executeQuery();
@@ -562,4 +1119,3 @@
     </script>
 </body>
 </html>
-

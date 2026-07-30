@@ -243,12 +243,16 @@ Note that ENG001/TRN001/CHS001 and ENG002/TRN002/CHS002 are shared across multip
 
    User must provide Kerberos principal/keytab (or `--skip-kinit`), and an `--api-url` unless skipping views/queries. ZooKeeper and security settings come from Cloudera Manager client configs (`--hbase-conf-dir`, default `/etc/hbase/conf`).
 
-3. **Run query examples** (complete vehicle view, component lookups, filters):
+3. **Use the SQL Search GUI** (http://localhost:8100):
+   - Open the **Vehicle 360** section
+   - Create Phoenix views (Execute Command), then run VIN / JOIN queries (Execute Query)
+
+4. **Or run query examples from the CLI**:
    ```bash
    ./run_vehicle360_queries.sh
    ```
 
-4. **Or query a full vehicle build manually**:
+5. **Or query a full vehicle build manually**:
    ```bash
    curl -X POST http://localhost:8099/api/phoenix/query \
      -H "Content-Type: application/json" \

@@ -108,10 +108,15 @@ PhoenixDotNet/
 ├── docker-compose.yml             # Docker Compose for OPDB (includes Phoenix)
 ├── hbase-site.xml                 # HBase configuration (mounted to container)
 ├── use-cases/                     # Use case examples and documentation
-│   └── student360/                # Student 360-degree view use case
-│       ├── README.md              # Complete use case documentation
-│       ├── sample_queries.sql     # 38+ sample SQL queries
-│       └── create_student_360_single_view.sh  # Implementation script
+│   ├── student360/                # Student 360-degree view (single wide table)
+│   ├── soldier360/                # Soldier 360-degree view (single wide table)
+│   └── vehicle360/                # Vehicle 360 (component catalogs + VIN JOINs)
+│       ├── README.md
+│       ├── CDP.md                 # CDP 7.1.9 examples
+│       ├── sample_queries.sql
+│       ├── create_vehicle360_tables.sh
+│       ├── create_vehicle360_tables_cdp.sh
+│       └── run_vehicle360_queries.sh
 └── README.md                      # This file
 ```
 
@@ -233,7 +238,7 @@ The application provides a REST API on port **8099**:
 A web-based SQL query interface on port **8100**:
 - Interactive SQL query editor
 - Execute queries and view results in formatted tables
-- Quick query buttons for common operations
+- **Vehicle 360** quick actions: create Phoenix views, VIN/component lookups, complete vehicle JOINs
 - Real-time error messages and status updates
 
 #### GUI Screenshots
@@ -525,7 +530,10 @@ See [Documentation/README_VIEWS.md](Documentation/README_VIEWS.md) for:
 - Query examples
 - Best practices for working with HBase-native tables
 
-**📋 Use Case Example**: See [use-cases/student360/README.md](use-cases/student360/README.md) for a complete 360-degree view implementation demonstrating single wide HBase table design with Phoenix view, including 38+ sample SQL queries.
+**📋 Use Case Examples**:
+- [Vehicle 360](use-cases/vehicle360/README.md) — component catalogs (`ENGINE` / `TRANSMISSION` / `CHASSIS`) + VIN assembly with Phoenix JOINs (featured in the SQL Search GUI)
+- [Student 360](use-cases/student360/README.md) — single wide HBase table design
+- [Soldier 360](use-cases/soldier360/README.md) — single wide HBase table design
 
 ## Troubleshooting
 
@@ -812,7 +820,10 @@ cd tests && ./smoke_test.sh
 - [Documentation/CONTRIBUTING.md](Documentation/CONTRIBUTING.md) - Contribution guidelines
 
 ### Use Cases
-- [use-cases/student360/README.md](use-cases/student360/README.md) - **Student 360-Degree View**: Complete use case demonstrating single wide HBase table design with Phoenix view for comprehensive student profiles (demographics, academics, services) in one row per student
+- [use-cases/vehicle360/README.md](use-cases/vehicle360/README.md) - **Vehicle 360**: Normalized ENGINE / TRANSMISSION / CHASSIS catalogs plus VIN-keyed VEHICLE table with JOIN-based complete vehicle view (GUI quick queries included)
+- [use-cases/vehicle360/CDP.md](use-cases/vehicle360/CDP.md) - CDP 7.1.9 setup examples for Vehicle 360
+- [use-cases/student360/README.md](use-cases/student360/README.md) - **Student 360-Degree View**: Single wide HBase table with Phoenix view
+- [use-cases/soldier360/README.md](use-cases/soldier360/README.md) - **Soldier 360-Degree View**: Single wide HBase table with Phoenix view
 
 ### Documentation Index
 - [Documentation/README.md](Documentation/README.md) - Complete documentation index and navigation guide
