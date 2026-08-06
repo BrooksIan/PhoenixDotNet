@@ -556,15 +556,16 @@
                     <li>Seed parts inventory: <code>./use-cases/vehicle360/create_vehicle360_tables.sh</code></li>
                     <li>Mount Phoenix views with the yellow buttons, then hit <strong>Execute Command</strong></li>
                     <li>Run VIN / JOIN lookups with <strong>Execute Query</strong></li>
-                    <li>Confirm racks with List Views: ENGINE*, *_BUILD, VEHICLE</li>
+                    <li>Confirm racks with List Views: ENGINE*, DEVICE*, *_BUILD, VEHICLE</li>
                 </ul>
                 <h3 style="margin-top: 14px;">Parts layout</h3>
                 <ul>
                     <li><code>ENGINE</code>, <code>TRANSMISSION</code>, <code>CHASSIS</code> — type catalogs</li>
                     <li><code>DEVICE</code> — shared manufacturing equipment</li>
-                    <li><code>ENGINE_BUILD</code>, <code>TRANSMISSION_BUILD</code>, <code>CHASSIS_BUILD</code> — physical units + production + device</li>
+                    <li><code>DEVICE_SESSION</code> — production-run log per device session</li>
+                    <li><code>ENGINE_BUILD</code>, <code>TRANSMISSION_BUILD</code>, <code>CHASSIS_BUILD</code> — physical units + production + device + session</li>
                     <li><code>VEHICLE</code> — VIN key; links one of each <em>build</em> ID</li>
-                    <li>Complete build sheet = VIN → builds → types / devices</li>
+                    <li>Complete build sheet = VIN → builds → types / devices / sessions</li>
                 </ul>
             </div>
 
@@ -584,6 +585,7 @@
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createTransmissionView')">Mount TRANSMISSION view</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createChassisView')">Mount CHASSIS view</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createDeviceView')">Mount DEVICE view</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createDeviceSessionView')">Mount DEVICE_SESSION</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createEngineBuildView')">Mount ENGINE_BUILD</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createTransmissionBuildView')">Mount TRANSMISSION_BUILD</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createChassisBuildView')">Mount CHASSIS_BUILD</button>
@@ -594,6 +596,7 @@
                     <div class="quick-queries">
                         <button class="quick-query-btn" onclick="setNamedQuery('engineById')">Engine type ENG001</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('deviceById')">Device DEV001</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('sessionById')">Session SES-DEV008-…</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('engineBuildById')">Engine build EB-…00001</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('transmissionById')">Transmission type TRN002</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('chassisById')">Chassis type CHS003</button>
@@ -607,6 +610,7 @@
                         <button class="quick-query-btn accent" onclick="setNamedQuery('completeVehicleOne')">Build sheet — one VIN</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('completeVehicleAll')">Build sheet — all vehicles</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('vinsByDevice')">VINs using device DEV008</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('vinsBySession')">VINs from session SES-DEV008-…</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('highHorsepower')">High horsepower (300+)</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('awdVehicles')">AWD vehicles</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('countByMake')">Count by make</button>
@@ -677,10 +681,23 @@
   "specs"."plant_code" VARCHAR,
   "specs"."status" VARCHAR
 )`,
+            createDeviceSessionView: `CREATE VIEW IF NOT EXISTS "DEVICE_SESSION" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "ids"."device_id" VARCHAR,
+  "run"."start_ts" VARCHAR,
+  "run"."end_ts" VARCHAR,
+  "run"."plant_code" VARCHAR,
+  "run"."line_id" VARCHAR,
+  "run"."shift" VARCHAR,
+  "run"."operator_id" VARCHAR,
+  "run"."status" VARCHAR,
+  "run"."units_produced" VARCHAR
+)`,
             createEngineBuildView: `CREATE VIEW IF NOT EXISTS "ENGINE_BUILD" (
   "rowkey" VARCHAR PRIMARY KEY,
   "ids"."engine_type_id" VARCHAR,
   "ids"."device_id" VARCHAR,
+  "ids"."session_id" VARCHAR,
   "production"."build_date" VARCHAR,
   "production"."plant_code" VARCHAR,
   "production"."line_id" VARCHAR,
@@ -694,6 +711,7 @@
   "rowkey" VARCHAR PRIMARY KEY,
   "ids"."transmission_type_id" VARCHAR,
   "ids"."device_id" VARCHAR,
+  "ids"."session_id" VARCHAR,
   "production"."build_date" VARCHAR,
   "production"."plant_code" VARCHAR,
   "production"."line_id" VARCHAR,
@@ -707,6 +725,7 @@
   "rowkey" VARCHAR PRIMARY KEY,
   "ids"."chassis_type_id" VARCHAR,
   "ids"."device_id" VARCHAR,
+  "ids"."session_id" VARCHAR,
   "production"."build_date" VARCHAR,
   "production"."plant_code" VARCHAR,
   "production"."line_id" VARCHAR,
@@ -734,14 +753,22 @@ WHERE "rowkey" = 'ENG001'`,
        "specs"."manufacturer", "specs"."model", "specs"."plant_code", "specs"."status"
 FROM "DEVICE"
 WHERE "rowkey" = 'DEV001'`,
+            sessionById: `SELECT "rowkey" as session_id, "ids"."device_id",
+       "run"."start_ts", "run"."end_ts", "run"."plant_code", "run"."line_id",
+       "run"."shift", "run"."operator_id", "run"."status", "run"."units_produced"
+FROM "DEVICE_SESSION"
+WHERE "rowkey" = 'SES-DEV008-20220308-001'`,
             engineBuildById: `SELECT eb."rowkey" as engine_build_id, eb."ids"."engine_type_id", eb."ids"."device_id",
+       eb."ids"."session_id",
        eb."production"."build_date", eb."production"."plant_code",
        eb."production"."serial_number", eb."production"."qc_status",
        e."specs"."manufacturer", e."specs"."model", e."specs"."horsepower",
-       d."specs"."name" as device_name, d."specs"."device_type"
+       d."specs"."name" as device_name, d."specs"."device_type",
+       s."run"."start_ts" as session_start, s."run"."status" as session_status
 FROM "ENGINE_BUILD" eb
 JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
 JOIN "DEVICE" d ON eb."ids"."device_id" = d."rowkey"
+JOIN "DEVICE_SESSION" s ON eb."ids"."session_id" = s."rowkey"
 WHERE eb."rowkey" = 'EB-ENG001-00001'`,
             transmissionById: `SELECT "rowkey" as transmission_type_id, "specs"."manufacturer", "specs"."model", "specs"."type", "specs"."drive_type"
 FROM "TRANSMISSION"
@@ -773,6 +800,7 @@ ORDER BY v."rowkey"`,
   eb."rowkey" as engine_build_id,
   eb."ids"."engine_type_id" as engine_type_id,
   eb."ids"."device_id" as engine_device_id,
+  eb."ids"."session_id" as engine_session_id,
   eb."production"."build_date" as engine_build_date,
   eb."production"."plant_code" as engine_plant,
   eb."production"."serial_number" as engine_serial,
@@ -786,9 +814,12 @@ ORDER BY v."rowkey"`,
   ed."specs"."name" as engine_device_name,
   ed."specs"."device_type" as engine_device_type,
   ed."specs"."model" as engine_device_model,
+  es."run"."start_ts" as engine_session_start,
+  es."run"."status" as engine_session_status,
   tb."rowkey" as transmission_build_id,
   tb."ids"."transmission_type_id" as transmission_type_id,
   tb."ids"."device_id" as transmission_device_id,
+  tb."ids"."session_id" as transmission_session_id,
   tb."production"."plant_code" as transmission_plant,
   tb."production"."serial_number" as transmission_serial,
   tb."production"."qc_status" as transmission_qc,
@@ -799,9 +830,12 @@ ORDER BY v."rowkey"`,
   t."specs"."drive_type" as drive_type,
   td."specs"."name" as transmission_device_name,
   td."specs"."device_type" as transmission_device_type,
+  ts."run"."start_ts" as transmission_session_start,
+  ts."run"."status" as transmission_session_status,
   cb."rowkey" as chassis_build_id,
   cb."ids"."chassis_type_id" as chassis_type_id,
   cb."ids"."device_id" as chassis_device_id,
+  cb."ids"."session_id" as chassis_session_id,
   cb."production"."plant_code" as chassis_plant,
   cb."production"."serial_number" as chassis_serial,
   cb."production"."qc_status" as chassis_qc,
@@ -811,17 +845,22 @@ ORDER BY v."rowkey"`,
   c."specs"."curb_weight_lb" as curb_weight_lb,
   c."specs"."doors" as doors,
   cd."specs"."name" as chassis_device_name,
-  cd."specs"."device_type" as chassis_device_type
+  cd."specs"."device_type" as chassis_device_type,
+  cs."run"."start_ts" as chassis_session_start,
+  cs."run"."status" as chassis_session_status
 FROM "VEHICLE" v
 JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
 JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
 JOIN "DEVICE" ed ON eb."ids"."device_id" = ed."rowkey"
+JOIN "DEVICE_SESSION" es ON eb."ids"."session_id" = es."rowkey"
 JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
 JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
 JOIN "DEVICE" td ON tb."ids"."device_id" = td."rowkey"
+JOIN "DEVICE_SESSION" ts ON tb."ids"."session_id" = ts."rowkey"
 JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
 JOIN "CHASSIS" c ON cb."ids"."chassis_type_id" = c."rowkey"
 JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
+JOIN "DEVICE_SESSION" cs ON cb."ids"."session_id" = cs."rowkey"
 WHERE v."rowkey" = '1HGCM82633A004352'`,
             completeVehicleAll: `SELECT
   v."rowkey" as vin,
@@ -924,6 +963,23 @@ JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
 JOIN "DEVICE" d ON cb."ids"."device_id" = d."rowkey"
 WHERE cb."ids"."device_id" = 'DEV008'
 ORDER BY vin, build_role`,
+            vinsBySession: `SELECT
+  s."rowkey" as session_id,
+  s."ids"."device_id",
+  d."specs"."name" as device_name,
+  s."run"."start_ts",
+  s."run"."end_ts",
+  s."run"."status",
+  cb."rowkey" as chassis_build_id,
+  v."rowkey" as vin,
+  v."info"."make",
+  v."info"."model",
+  v."info"."year"
+FROM "DEVICE_SESSION" s
+JOIN "DEVICE" d ON s."ids"."device_id" = d."rowkey"
+JOIN "CHASSIS_BUILD" cb ON cb."ids"."session_id" = s."rowkey"
+JOIN "VEHICLE" v ON v."ids"."chassis_build_id" = cb."rowkey"
+WHERE s."rowkey" = 'SES-DEV008-20220308-001'`,
             highHorsepower: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", v."info"."year",
        e."specs"."horsepower", e."specs"."fuel_type", eb."rowkey" as engine_build_id
 FROM "VEHICLE" v

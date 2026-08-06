@@ -2,20 +2,21 @@
 
 ## Overview
 
-This use case demonstrates a **type catalog → manufacturing device → physical build → VIN assembly** pattern in HBase with Phoenix SQL access. Unlike Student/Soldier 360 (single wide table, no JOINs), Vehicle 360 separates:
+This use case demonstrates a **type catalog → manufacturing device → device session → physical build → VIN assembly** pattern in HBase with Phoenix SQL access. Unlike Student/Soldier 360 (single wide table, no JOINs), Vehicle 360 separates:
 
 1. **Type catalogs** — reusable component definitions (`ENG001`, `TRN001`, `CHS001`)
 2. **DEVICE** — shared manufacturing equipment catalog (`DEV001`, …)
-3. **Build tables** — individual manufactured units with production metadata + `device_id`
-4. **VEHICLE** — VIN row that references **build IDs** (not type IDs)
+3. **DEVICE_SESSION** — production-run log per device session (`SES-DEV008-20220308-001`, …)
+4. **Build tables** — individual manufactured units with production metadata + `device_id` + `session_id`
+5. **VEHICLE** — VIN row that references **build IDs** (not type IDs)
 
-Full vehicle detail is retrieved with **Phoenix JOINs**: `VEHICLE → *_BUILD → type catalog` and `*_BUILD → DEVICE`.
+Full vehicle detail is retrieved with **Phoenix JOINs**: `VEHICLE → *_BUILD → type catalog`, `*_BUILD → DEVICE`, and `*_BUILD → DEVICE_SESSION`.
 
 ## Architecture
 
 ### Design Approach
 
-Eight HBase tables:
+Nine HBase tables:
 
 | Table | Row Key | Purpose |
 |-------|---------|---------|
@@ -23,14 +24,17 @@ Eight HBase tables:
 | `TRANSMISSION` | Type ID (e.g. `TRN001`) | Transmission type catalog |
 | `CHASSIS` | Type ID (e.g. `CHS001`) | Chassis type catalog |
 | `DEVICE` | Device ID (e.g. `DEV001`) | Manufacturing equipment catalog |
-| `ENGINE_BUILD` | Build ID (e.g. `EB-ENG001-00001`) | Physical engine + production + device |
-| `TRANSMISSION_BUILD` | Build ID (e.g. `TB-TRN001-00001`) | Physical transmission + production + device |
-| `CHASSIS_BUILD` | Build ID (e.g. `CB-CHS001-00001`) | Physical chassis + production + device |
+| `DEVICE_SESSION` | Session ID (e.g. `SES-DEV008-20220308-001`) | Production-run log for one device session |
+| `ENGINE_BUILD` | Build ID (e.g. `EB-ENG001-00001`) | Physical engine + production + device + session |
+| `TRANSMISSION_BUILD` | Build ID (e.g. `TB-TRN001-00001`) | Physical transmission + production + device + session |
+| `CHASSIS_BUILD` | Build ID (e.g. `CB-CHS001-00001`) | Physical chassis + production + device + session |
 | `VEHICLE` | VIN | Assembled vehicle; stores `*_build_id` refs |
 
 #### Table relationships (all fields)
 
-![Comprehensive Vehicle Build ER diagram](../../images/Vehicle360_UsrCase.png)
+Nine-table manufacturing-line architecture — component catalogs, device sessions, physical builds, and VIN assembly:
+
+![Vehicle manufacturing line tracking reference architecture](../../images/vehicle360_table_view.png)
 
 Attribute names use `family_qualifier` (HBase `family:qualifier`). Mermaid equivalent of the diagram above:
 
@@ -39,9 +43,13 @@ erDiagram
   ENGINE ||--o{ ENGINE_BUILD : "engine_type_id"
   TRANSMISSION ||--o{ TRANSMISSION_BUILD : "transmission_type_id"
   CHASSIS ||--o{ CHASSIS_BUILD : "chassis_type_id"
+  DEVICE ||--o{ DEVICE_SESSION : "device_id"
   DEVICE ||--o{ ENGINE_BUILD : "device_id"
   DEVICE ||--o{ TRANSMISSION_BUILD : "device_id"
   DEVICE ||--o{ CHASSIS_BUILD : "device_id"
+  DEVICE_SESSION ||--o{ ENGINE_BUILD : "session_id"
+  DEVICE_SESSION ||--o{ TRANSMISSION_BUILD : "session_id"
+  DEVICE_SESSION ||--o{ CHASSIS_BUILD : "session_id"
   ENGINE_BUILD ||--o{ VEHICLE : "engine_build_id"
   TRANSMISSION_BUILD ||--o{ VEHICLE : "transmission_build_id"
   CHASSIS_BUILD ||--o{ VEHICLE : "chassis_build_id"
@@ -84,10 +92,24 @@ erDiagram
     string specs_status
   }
 
+  DEVICE_SESSION {
+    string rowkey PK
+    string ids_device_id FK
+    string run_start_ts
+    string run_end_ts
+    string run_plant_code
+    string run_line_id
+    string run_shift
+    string run_operator_id
+    string run_status
+    string run_units_produced
+  }
+
   ENGINE_BUILD {
     string rowkey PK
     string ids_engine_type_id FK
     string ids_device_id FK
+    string ids_session_id FK
     string production_build_date
     string production_plant_code
     string production_line_id
@@ -102,6 +124,7 @@ erDiagram
     string rowkey PK
     string ids_transmission_type_id FK
     string ids_device_id FK
+    string ids_session_id FK
     string production_build_date
     string production_plant_code
     string production_line_id
@@ -116,6 +139,7 @@ erDiagram
     string rowkey PK
     string ids_chassis_type_id FK
     string ids_device_id FK
+    string ids_session_id FK
     string production_build_date
     string production_plant_code
     string production_line_id
@@ -141,7 +165,11 @@ erDiagram
 
 #### Full vehicle JOIN path
 
-One VIN fans out to three builds; each build joins its type catalog and the shared `DEVICE` table (`ed` / `td` / `cd` are aliases).
+One VIN fans out to three builds; each build joins its type catalog, shared `DEVICE`, and `DEVICE_SESSION`:
+
+![Vehicle lineage and device tracking architecture flow](../../images/vehicle360_fullJoin.png)
+
+Mermaid equivalent (`ed` / `es` / … are aliases):
 
 ```mermaid
 flowchart LR
@@ -159,6 +187,10 @@ flowchart LR
   TD["DEVICE<br/>transmission device"]
   CD["DEVICE<br/>chassis device"]
 
+  ES["DEVICE_SESSION<br/>engine session"]
+  TS["DEVICE_SESSION<br/>trans session"]
+  CS["DEVICE_SESSION<br/>chassis session"]
+
   VEH -->|"ids.engine_build_id"| EB
   VEH -->|"ids.transmission_build_id"| TB
   VEH -->|"ids.chassis_build_id"| CB
@@ -170,6 +202,14 @@ flowchart LR
   EB -->|"ids.device_id"| ED
   TB -->|"ids.device_id"| TD
   CB -->|"ids.device_id"| CD
+
+  EB -->|"ids.session_id"| ES
+  TB -->|"ids.session_id"| TS
+  CB -->|"ids.session_id"| CS
+
+  ES -->|"ids.device_id"| ED
+  TS -->|"ids.device_id"| TD
+  CS -->|"ids.device_id"| CD
 ```
 
 ### Why This Pattern?
@@ -177,19 +217,20 @@ flowchart LR
 Student/Soldier 360 put all attributes in one row for fast single-key lookups. Vehicles need both shared type definitions and per-unit manufacturing history:
 
 1. Type catalogs avoid duplicating specs across every unit
-2. Build rows capture plant, line, shift, batch, serial, QC, operator
-3. VIN → build IDs tracks the exact physical parts on a vehicle
-4. Demonstrates multi-hop JOINs in Phoenix over HBase-native tables
+2. Device sessions log each production run (start/end, shift, operator, status)
+3. Build rows capture plant, line, shift, batch, serial, QC, operator, and the session that produced them
+4. VIN → build IDs tracks the exact physical parts on a vehicle
+5. Demonstrates multi-hop JOINs in Phoenix over HBase-native tables
 
 ### Comparison to 360 Wide-Table Design
 
 | Aspect | Wide Table (Student/Soldier 360) | Vehicle 360 (This Design) |
 |--------|----------------------------------|---------------------------|
-| Tables | One table | Eight tables (3 types + DEVICE + 3 builds + VIN) |
-| Row key | Entity ID (student/EDIPI) | Type IDs, build IDs, VIN |
-| Relationships | Denormalized into one row | Type → build → VIN |
+| Tables | One table | Nine tables (3 types + DEVICE + DEVICE_SESSION + 3 builds + VIN) |
+| Row key | Entity ID (student/EDIPI) | Type IDs, session IDs, build IDs, VIN |
+| Relationships | Denormalized into one row | Type → session → build → VIN |
 | Full profile | `SELECT * WHERE rowkey = ...` | JOINs through builds |
-| Reuse | Poor (data copied per row) | Strong (shared types; unique builds) |
+| Reuse | Poor (data copied per row) | Strong (shared types/devices; unique builds/sessions) |
 | Best for | Dashboard / complete profile | Catalog + manufacturing + assembly |
 
 ## Table Structure
@@ -244,6 +285,29 @@ Row key: device ID (`DEV001`, …)
 | `plant_code` | Home plant |
 | `status` | ACTIVE / MAINTENANCE |
 
+### DEVICE_SESSION (`ids`, `run`)
+
+Row key: session ID (`SES-{deviceId}-{yyyyMMdd}-{seq}`, e.g. `SES-DEV008-20220308-001`)
+
+**Column family `ids`**:
+
+| Qualifier | Description |
+|-----------|-------------|
+| `device_id` | References `DEVICE` |
+
+**Column family `run`**:
+
+| Qualifier | Description |
+|-----------|-------------|
+| `start_ts` | Session start (ISO-8601) |
+| `end_ts` | Session end (ISO-8601) |
+| `plant_code` | Plant where the run executed |
+| `line_id` | Line |
+| `shift` | Shift |
+| `operator_id` | Operator |
+| `status` | `COMPLETE` / `ABORT` |
+| `units_produced` | Units completed in the session |
+
 ### ENGINE_BUILD / TRANSMISSION_BUILD / CHASSIS_BUILD (`ids`, `production`)
 
 Row key: build ID (`EB-…`, `TB-…`, `CB-…`)
@@ -256,6 +320,7 @@ Row key: build ID (`EB-…`, `TB-…`, `CB-…`)
 | `transmission_type_id` | `TRANSMISSION_BUILD` | References `TRANSMISSION` |
 | `chassis_type_id` | `CHASSIS_BUILD` | References `CHASSIS` |
 | `device_id` | all build tables | References shared `DEVICE` |
+| `session_id` | all build tables | References `DEVICE_SESSION` |
 
 **Column family `production`** (all three build tables):
 
@@ -311,6 +376,15 @@ Types `TRN001`–`TRN004` and `CHS001`–`CHS004` are unchanged from the origina
 | 5YJ3E1EA1KF789012 | Tesla Model Y 2024 | EB-ENG005-00001 | TB-TRN004-00002 | CB-CHS004-00001 |
 
 Multiple VINs can share an engine **type** (e.g. ENG001) while each gets a distinct **build** row.
+
+### Device sessions (sample)
+
+Each build references one session. Example chassis sessions for `DEV008`:
+
+| Session ID | Device | Start | Shift | Status | Build |
+|------------|--------|-------|-------|--------|-------|
+| `SES-DEV008-20220308-001` | DEV008 | 2022-03-08T06:00:00Z | A | COMPLETE | `CB-CHS001-00001` (Civic) |
+| `SES-DEV008-20230114-001` | DEV008 | 2023-01-14T14:00:00Z | B | COMPLETE | `CB-CHS001-00002` (Accord) |
 
 ## Implementation
 
@@ -382,6 +456,8 @@ docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
 create 'ENGINE', 'specs'
 create 'TRANSMISSION', 'specs'
 create 'CHASSIS', 'specs'
+create 'DEVICE', 'specs'
+create 'DEVICE_SESSION', 'ids', 'run'
 create 'ENGINE_BUILD', 'ids', 'production'
 create 'TRANSMISSION_BUILD', 'ids', 'production'
 create 'CHASSIS_BUILD', 'ids', 'production'
@@ -396,7 +472,12 @@ docker exec -i opdb-docker /opt/hbase/bin/hbase shell <<'EOF'
 put 'ENGINE', 'ENG001', 'specs:manufacturer', 'Honda'
 put 'ENGINE', 'ENG001', 'specs:model', 'K24Z7'
 put 'ENGINE', 'ENG001', 'specs:horsepower', '185'
+put 'DEVICE', 'DEV001', 'specs:name', 'K24 Block Line Robot'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'ids:device_id', 'DEV001'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:status', 'COMPLETE'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'ids:engine_type_id', 'ENG001'
+put 'ENGINE_BUILD', 'EB-ENG001-00001', 'ids:device_id', 'DEV001'
+put 'ENGINE_BUILD', 'EB-ENG001-00001', 'ids:session_id', 'SES-DEV001-20220312-001'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'production:plant_code', 'MARYSVILLE'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'production:serial_number', '00001'
 put 'TRANSMISSION', 'TRN001', 'specs:type', 'CVT'
@@ -432,7 +513,7 @@ curl -X POST http://localhost:8099/api/phoenix/execute \
   -d '{"sql": "CREATE VIEW IF NOT EXISTS \"VEHICLE\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"engine_build_id\" VARCHAR, \"ids\".\"transmission_build_id\" VARCHAR, \"ids\".\"chassis_build_id\" VARCHAR, \"info\".\"make\" VARCHAR, \"info\".\"model\" VARCHAR, \"info\".\"year\" VARCHAR, \"info\".\"color\" VARCHAR, \"info\".\"trim\" VARCHAR)"}'
 ```
 
-Also create `DEVICE`, `ENGINE_BUILD`, `TRANSMISSION_BUILD`, and `CHASSIS_BUILD` views (see `sample_queries.sql`).
+Also create `DEVICE`, `DEVICE_SESSION`, `ENGINE_BUILD`, `TRANSMISSION_BUILD`, and `CHASSIS_BUILD` views (see `sample_queries.sql`).
 
 ## Query Examples
 
@@ -486,7 +567,11 @@ JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
 WHERE v."rowkey" = '1HGCM82633A004352'
 ```
 
-See [Example Screenshots](#example-screenshots) for the Garage Bay build-sheet result for this VIN.
+Garage Bay result for this query (**Build sheet — one VIN**):
+
+![Full join view by VIN](../../images/FullJoinView.png)
+
+See [Example Diagrams](#example-diagrams) for the JOIN / lineage architecture diagram.
 
 ### Query 3: Vehicles sharing an engine type (via builds)
 
@@ -503,7 +588,31 @@ WHERE eb."ids"."engine_type_id" = 'ENG001'
 ORDER BY v."rowkey"
 ```
 
-### Query 4: VINs that used the same device
+### Query 4: VINs / builds from one device session
+
+Trace a production run to the finished vehicle (example: Civic chassis session).
+
+```sql
+SELECT
+  s."rowkey" as session_id,
+  s."ids"."device_id",
+  d."specs"."name" as device_name,
+  s."run"."start_ts",
+  s."run"."end_ts",
+  s."run"."status",
+  cb."rowkey" as chassis_build_id,
+  v."rowkey" as vin,
+  v."info"."make",
+  v."info"."model",
+  v."info"."year"
+FROM "DEVICE_SESSION" s
+JOIN "DEVICE" d ON s."ids"."device_id" = d."rowkey"
+JOIN "CHASSIS_BUILD" cb ON cb."ids"."session_id" = s."rowkey"
+JOIN "VEHICLE" v ON v."ids"."chassis_build_id" = cb."rowkey"
+WHERE s."rowkey" = 'SES-DEV008-20220308-001'
+```
+
+### Query 5: VINs that used the same device
 
 A manufacturing device can appear on engine, transmission, and/or chassis builds. Union the three paths to list every VIN that touched a given `device_id` (example: `DEV008` — East Liberty Body Fixture on Civic and Accord chassis).
 
@@ -555,7 +664,7 @@ WHERE cb."ids"."device_id" = 'DEV008'
 ORDER BY vin, build_role
 ```
 
-### Query 5: High-horsepower vehicles
+### Query 6: High-horsepower vehicles
 
 ```sql
 SELECT
@@ -571,7 +680,7 @@ WHERE TO_NUMBER(e."specs"."horsepower") >= 300
 ORDER BY TO_NUMBER(e."specs"."horsepower") DESC
 ```
 
-### Query 6: Count vehicles per transmission type
+### Query 7: Count vehicles per transmission type
 
 ```sql
 SELECT
@@ -590,6 +699,7 @@ ORDER BY t."specs"."type"
 
 - **Type catalogs**: Short IDs (`ENG001`, `TRN001`, `CHS001`)
 - **DEVICE**: Short IDs (`DEV001`, …)
+- **DEVICE_SESSION**: `SES-{deviceId}-{yyyyMMdd}-{seq}`
 - **Build tables**: Prefixed unit IDs (`EB-ENG001-00001`, `TB-…`, `CB-…`)
 - **VEHICLE**: VIN as row key — natural unique identifier for a finished vehicle
 - All keys stored as VARCHAR strings
@@ -597,7 +707,8 @@ ORDER BY t."specs"."type"
 ### Column Families
 
 - Type catalogs and `DEVICE` use a single `specs` family
-- Build tables use `ids` (type FK + `device_id`) + `production` (manufacturing metadata)
+- `DEVICE_SESSION` uses `ids` (device FK) + `run` (production-run log)
+- Build tables use `ids` (type FK + `device_id` + `session_id`) + `production` (manufacturing metadata)
 - `VEHICLE` separates `ids` (build refs) from `info` (display fields)
 
 ### Data Types
@@ -616,7 +727,7 @@ ORDER BY t."specs"."type"
 
 ### 1. VIN Lookup Dashboard / Full Build by VIN
 
-Show make/model, component types, build production metadata, and manufacturing devices for a single VIN (Query 2 above). In Garage Bay, **Build sheet — one VIN** renders the JOIN as a compact build sheet (see screenshot below).
+Show make/model, component types, build production metadata, manufacturing devices, and device sessions for a single VIN (Query 2 above). In Garage Bay, **Build sheet — one VIN** runs the full JOIN path (see [Example Diagrams](#example-diagrams)).
 
 ### 2. Parts Reuse Report
 
@@ -624,25 +735,37 @@ Find every vehicle built with a given engine type (via builds) (Query 3).
 
 ### 3. Device Traceability
 
-Find every VIN that used a manufacturing device on any component build (Query 4). Useful for recalls, QC holds, or maintenance impact analysis.
+Find every VIN that used a manufacturing device on any component build (Query 5). Useful for recalls, QC holds, or maintenance impact analysis.
 
-### 4. Performance Filtering
+### 4. Session Traceability
+
+Find the build and VIN produced in a specific device production run (Query 4). Useful for shift audits and run-level quality holds.
+
+### 5. Performance Filtering
 
 Filter the fleet by horsepower, drivetrain, or body style via JOINs.
 
-### 5. Catalog Maintenance
+### 6. Catalog Maintenance
 
 Update engine horsepower once in `ENGINE`; all vehicles referencing that ID see the new value on the next JOIN query.
 
-## Example Screenshots
+## Example Diagrams
 
-### Full Build by VIN
+### Table architecture
 
-One VIN fans out through builds to type catalogs and manufacturing devices. In Garage Bay, **Build sheet — one VIN** returns a compact card (not a wide table):
+Reference ER diagram for all nine tables (catalogs → device sessions → builds → VIN):
 
-![Full build by VIN](../../images/FullBuildByVIN.png)
+![Vehicle manufacturing line tracking reference architecture](../../images/vehicle360_table_view.png)
 
-**Query shortcut**: `completeVehicleOne` — VIN `1HGCM82633A004352` → Honda Civic EX with engine / transmission / chassis builds, plants, serials, QC, and devices (`DEV001`, `DEV008`).
+### Full JOIN / lineage flow
+
+VIN-centric lineage through builds, type catalogs, devices, and production sessions:
+
+![Vehicle lineage and device tracking architecture flow](../../images/vehicle360_fullJoin.png)
+
+In Garage Bay, **Build sheet — one VIN** (`completeVehicleOne`) runs this JOIN path for VIN `1HGCM82633A004352`:
+
+![Full join view by VIN](../../images/FullJoinView.png)
 
 ## Related Documentation
 
@@ -657,9 +780,10 @@ One VIN fans out through builds to type catalogs and manufacturing devices. In G
 See `sample_queries.sql` for 30+ queries covering:
 
 - Component lookups by ID
+- Device session lookups and sessions-by-device
 - Vehicle lookups by VIN / make / year
-- Full vehicle builds with JOINs
-- Device traceability (VINs sharing a manufacturing device)
+- Full vehicle builds with JOINs (including sessions)
+- Device and session traceability
 - Component reuse and counts
 - Filters with `TO_NUMBER()`
 - Aggregations by make, transmission type, body style, fuel type
@@ -669,8 +793,9 @@ See `sample_queries.sql` for 30+ queries covering:
 The Vehicle 360 use case demonstrates:
 
 - Separate HBase tables for engine, transmission, and chassis catalogs
-- Unique IDs per component row
-- A VIN-keyed `VEHICLE` table that combines one engine ID, one transmission ID, and one chassis ID
+- Shared `DEVICE` catalog and `DEVICE_SESSION` production-run logs
+- Build rows that reference both `device_id` and `session_id`
+- A VIN-keyed `VEHICLE` table that combines one engine, transmission, and chassis **build**
 - Phoenix views for SQL access
-- JOIN-based full vehicle builds
+- JOIN-based full vehicle builds (VIN → builds → types / devices / sessions)
 - A clear contrast to the denormalized student/soldier 360 wide-table pattern

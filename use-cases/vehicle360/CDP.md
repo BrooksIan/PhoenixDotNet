@@ -145,9 +145,17 @@ scan 'vehicle360:VEHICLE', {LIMIT => 2}
 
 ## Example 9: Complete build sheet via API
 
-After views are created, query VIN → builds → types / devices.
+After views are created, query VIN → builds → types / devices / sessions. Garage Bay renders the JOIN as a compact build sheet:
 
-Join path (see also [`README.md`](README.md) architecture diagrams):
+![Full join view by VIN](../../images/FullJoinView.png)
+
+Architecture diagrams (see also [`README.md`](README.md)):
+
+![Vehicle manufacturing line tracking reference architecture](../../images/vehicle360_table_view.png)
+
+![Vehicle lineage and device tracking architecture flow](../../images/vehicle360_fullJoin.png)
+
+Join path:
 
 ```mermaid
 flowchart LR
@@ -161,6 +169,9 @@ flowchart LR
   ED["DEVICE engine"]
   TD["DEVICE transmission"]
   CD["DEVICE chassis"]
+  ES["DEVICE_SESSION engine"]
+  TS["DEVICE_SESSION trans"]
+  CS["DEVICE_SESSION chassis"]
   VEH -->|"ids.engine_build_id"| EB
   VEH -->|"ids.transmission_build_id"| TB
   VEH -->|"ids.chassis_build_id"| CB
@@ -170,13 +181,16 @@ flowchart LR
   EB -->|"ids.device_id"| ED
   TB -->|"ids.device_id"| TD
   CB -->|"ids.device_id"| CD
+  EB -->|"ids.session_id"| ES
+  TB -->|"ids.session_id"| TS
+  CB -->|"ids.session_id"| CS
 ```
 
 ```bash
 curl -X POST https://phoenix-api.example.com/api/phoenix/query \
   -H "Content-Type: application/json" \
   -d '{
-    "sql": "SELECT v.\"rowkey\" as vin, v.\"info\".\"make\", v.\"info\".\"model\", ed.\"specs\".\"name\" as engine_device_name, td.\"specs\".\"name\" as transmission_device_name, cd.\"specs\".\"name\" as chassis_device_name FROM \"VEHICLE\" v JOIN \"ENGINE_BUILD\" eb ON v.\"ids\".\"engine_build_id\" = eb.\"rowkey\" JOIN \"DEVICE\" ed ON eb.\"ids\".\"device_id\" = ed.\"rowkey\" JOIN \"TRANSMISSION_BUILD\" tb ON v.\"ids\".\"transmission_build_id\" = tb.\"rowkey\" JOIN \"DEVICE\" td ON tb.\"ids\".\"device_id\" = td.\"rowkey\" JOIN \"CHASSIS_BUILD\" cb ON v.\"ids\".\"chassis_build_id\" = cb.\"rowkey\" JOIN \"DEVICE\" cd ON cb.\"ids\".\"device_id\" = cd.\"rowkey\" WHERE v.\"rowkey\" = '\''1HGCM82633A004352'\''"
+    "sql": "SELECT v.\"rowkey\" as vin, v.\"info\".\"make\", v.\"info\".\"model\", eb.\"ids\".\"session_id\" as engine_session_id, ed.\"specs\".\"name\" as engine_device_name, tb.\"ids\".\"session_id\" as transmission_session_id, td.\"specs\".\"name\" as transmission_device_name, cb.\"ids\".\"session_id\" as chassis_session_id, cd.\"specs\".\"name\" as chassis_device_name FROM \"VEHICLE\" v JOIN \"ENGINE_BUILD\" eb ON v.\"ids\".\"engine_build_id\" = eb.\"rowkey\" JOIN \"DEVICE\" ed ON eb.\"ids\".\"device_id\" = ed.\"rowkey\" JOIN \"DEVICE_SESSION\" es ON eb.\"ids\".\"session_id\" = es.\"rowkey\" JOIN \"TRANSMISSION_BUILD\" tb ON v.\"ids\".\"transmission_build_id\" = tb.\"rowkey\" JOIN \"DEVICE\" td ON tb.\"ids\".\"device_id\" = td.\"rowkey\" JOIN \"DEVICE_SESSION\" ts ON tb.\"ids\".\"session_id\" = ts.\"rowkey\" JOIN \"CHASSIS_BUILD\" cb ON v.\"ids\".\"chassis_build_id\" = cb.\"rowkey\" JOIN \"DEVICE\" cd ON cb.\"ids\".\"device_id\" = cd.\"rowkey\" JOIN \"DEVICE_SESSION\" cs ON cb.\"ids\".\"session_id\" = cs.\"rowkey\" WHERE v.\"rowkey\" = '\''1HGCM82633A004352'\''"
   }'
 ```
 

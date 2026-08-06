@@ -100,10 +100,13 @@ PhoenixDotNet/
 ├── PhoenixConnectionInitializer.cs # Background service for connection initialization
 ├── wwwroot/
 │   └── index.html                 # SQL Search GUI
-├── images/                        # GUI screenshots
+├── images/                        # GUI screenshots and architecture diagrams
 │   ├── List_tables_views.png      # List tables and views screenshot
 │   ├── phoenix_table_example.png  # Phoenix table query example
-│   └── phoenix_view_example.png   # Phoenix view query example
+│   ├── phoenix_view_example.png   # Phoenix view query example
+│   ├── vehicle360_table_view.png  # Vehicle 360 nine-table ER architecture
+│   ├── vehicle360_fullJoin.png    # Vehicle 360 VIN lineage / JOIN flow
+│   └── FullJoinView.png           # Vehicle 360 Garage Bay full JOIN result
 ├── appsettings.json               # Configuration file
 ├── docker-compose.yml             # Docker Compose for OPDB (includes Phoenix)
 ├── hbase-site.xml                 # HBase configuration (mounted to container)
@@ -238,7 +241,7 @@ The application provides a REST API on port **8099**:
 A web-based SQL query interface on port **8100**:
 - Interactive SQL query editor
 - Execute queries and view results in formatted tables
-- **Vehicle 360** quick actions: create Phoenix views, VIN/component lookups, complete vehicle JOINs
+- **Vehicle 360** quick actions: create Phoenix views, VIN/component lookups, device sessions, complete vehicle JOINs
 - Real-time error messages and status updates
 
 #### GUI Screenshots
@@ -251,6 +254,19 @@ A web-based SQL query interface on port **8100**:
 
 **Phoenix View Query Example:**
 ![Phoenix View Example](images/phoenix_view_example.png)
+
+#### Vehicle 360 Architecture
+
+Nine-table model: type catalogs → `DEVICE` / `DEVICE_SESSION` → physical builds → VIN assembly. Full details in [Vehicle 360](use-cases/vehicle360/README.md).
+
+**Table relationships:**
+![Vehicle manufacturing line tracking reference architecture](images/vehicle360_table_view.png)
+
+**Full JOIN / lineage flow:**
+![Vehicle lineage and device tracking architecture flow](images/vehicle360_fullJoin.png)
+
+**Full JOIN view (Garage Bay result for one VIN):**
+![Full join view by VIN](images/FullJoinView.png)
 
 ### Features
 
@@ -531,7 +547,7 @@ See [Documentation/README_VIEWS.md](Documentation/README_VIEWS.md) for:
 - Best practices for working with HBase-native tables
 
 **📋 Use Case Examples**:
-- [Vehicle 360](use-cases/vehicle360/README.md) — component catalogs (`ENGINE` / `TRANSMISSION` / `CHASSIS`) + VIN assembly with Phoenix JOINs (featured in the SQL Search GUI)
+- [Vehicle 360](use-cases/vehicle360/README.md) — component catalogs + `DEVICE` / `DEVICE_SESSION` + build tables + VIN assembly with Phoenix JOINs (featured in the SQL Search GUI)
 - [Student 360](use-cases/student360/README.md) — single wide HBase table design
 - [Soldier 360](use-cases/soldier360/README.md) — single wide HBase table design
 
@@ -820,7 +836,7 @@ cd tests && ./smoke_test.sh
 - [Documentation/CONTRIBUTING.md](Documentation/CONTRIBUTING.md) - Contribution guidelines
 
 ### Use Cases
-- [use-cases/vehicle360/README.md](use-cases/vehicle360/README.md) - **Vehicle 360**: Normalized ENGINE / TRANSMISSION / CHASSIS catalogs plus VIN-keyed VEHICLE table with JOIN-based complete vehicle view (GUI quick queries included)
+- [use-cases/vehicle360/README.md](use-cases/vehicle360/README.md) - **Vehicle 360**: Catalogs + DEVICE_SESSION production runs + build tables + VIN assembly; architecture diagrams in `images/vehicle360_*.png`
 - [use-cases/vehicle360/CDP.md](use-cases/vehicle360/CDP.md) - CDP 7.1.9 setup examples for Vehicle 360
 - [use-cases/student360/README.md](use-cases/student360/README.md) - **Student 360-Degree View**: Single wide HBase table with Phoenix view
 - [use-cases/soldier360/README.md](use-cases/soldier360/README.md) - **Soldier 360-Degree View**: Single wide HBase table with Phoenix view

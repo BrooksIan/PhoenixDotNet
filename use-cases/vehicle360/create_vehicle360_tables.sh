@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# Vehicle 360 — Type catalogs + devices + per-unit builds + VIN assembly
+# Vehicle 360 — Type catalogs + devices + sessions + per-unit builds + VIN assembly
 # Type tables:  ENGINE, TRANSMISSION, CHASSIS
 # Devices:      DEVICE (shared manufacturing equipment catalog)
-# Build tables: ENGINE_BUILD, TRANSMISSION_BUILD, CHASSIS_BUILD (production + device_id)
+# Sessions:     DEVICE_SESSION (production-run log per device session)
+# Build tables: ENGINE_BUILD, TRANSMISSION_BUILD, CHASSIS_BUILD (production + device_id + session_id)
 # Assembly:     VEHICLE (VIN → engine_build_id, transmission_build_id, chassis_build_id)
 #
 # Defaults match the local docker-compose stack. Override via flags or env vars.
@@ -54,7 +55,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 hbase_shell() {
-  "$DOCKER_BIN" exec -i "$HBASE_CONTAINER" "$HBASE_BIN" shell
+  # -n: non-interactive; avoids hung shells when stdin closes mid-batch
+  "$DOCKER_BIN" exec -i "$HBASE_CONTAINER" "$HBASE_BIN" shell -n
 }
 
 echo "=========================================="
@@ -78,7 +80,7 @@ fi
 
 if [[ "$RECREATE" == true ]]; then
   echo "Dropping existing Vehicle 360 Phoenix views (if any)..."
-  for v in VEHICLE ENGINE_BUILD TRANSMISSION_BUILD CHASSIS_BUILD ENGINE TRANSMISSION CHASSIS DEVICE; do
+  for v in VEHICLE ENGINE_BUILD TRANSMISSION_BUILD CHASSIS_BUILD DEVICE_SESSION ENGINE TRANSMISSION CHASSIS DEVICE; do
     curl -s -X POST "${API_URL}/execute" -H "Content-Type: application/json" \
       -d "{\"sql\": \"DROP VIEW IF EXISTS \\\"${v}\\\"\"}" >/dev/null || true
   done
@@ -92,6 +94,8 @@ disable 'TRANSMISSION_BUILD'
 drop 'TRANSMISSION_BUILD'
 disable 'CHASSIS_BUILD'
 drop 'CHASSIS_BUILD'
+disable 'DEVICE_SESSION'
+drop 'DEVICE_SESSION'
 disable 'ENGINE'
 drop 'ENGINE'
 disable 'TRANSMISSION'
@@ -118,6 +122,11 @@ EOF
 echo "  Creating DEVICE catalog..."
 hbase_shell <<'EOF'
 create 'DEVICE', 'specs'
+EOF
+
+echo "  Creating DEVICE_SESSION production-run log..."
+hbase_shell <<'EOF'
+create 'DEVICE_SESSION', 'ids', 'run'
 EOF
 
 echo "  Creating build tables..."
@@ -297,13 +306,227 @@ put 'DEVICE', 'DEV012', 'specs:status', 'ACTIVE'
 EOF
 
 echo ""
-echo "Step 3: Inserting physical builds (production metadata)..."
+echo "Step 3: Inserting device sessions + physical builds..."
 echo ""
+
+echo "  DEVICE_SESSION rows (one production run per build)..."
+hbase_shell <<'EOF'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'ids:device_id', 'DEV001'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:start_ts', '2022-03-12T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:end_ts', '2022-03-12T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:plant_code', 'MARYSVILLE'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:line_id', 'L2'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:operator_id', 'OP-1042'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV001-20220312-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'ids:device_id', 'DEV002'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:start_ts', '2023-01-18T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:end_ts', '2023-01-18T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:plant_code', 'MARYSVILLE'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:line_id', 'L2'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:shift', 'B'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:operator_id', 'OP-1108'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV002-20230118-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'ids:device_id', 'DEV003'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:start_ts', '2021-06-04T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:end_ts', '2021-06-04T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:plant_code', 'GEORGETOWN'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:line_id', 'L1'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:operator_id', 'OP-2201'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV003-20210604-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'ids:device_id', 'DEV004'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:start_ts', '2024-02-09T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:end_ts', '2024-02-10T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:plant_code', 'GEORGETOWN'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:line_id', 'L1'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:shift', 'C'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:operator_id', 'OP-2215'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV004-20240209-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'ids:device_id', 'DEV005'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:start_ts', '2020-08-21T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:end_ts', '2020-08-21T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:plant_code', 'FLATROCK'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:line_id', 'L4'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:operator_id', 'OP-3304'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV005-20200821-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'ids:device_id', 'DEV006'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:start_ts', '2023-05-30T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:end_ts', '2023-05-30T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:plant_code', 'MUNICH'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:line_id', 'L7'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:shift', 'B'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:operator_id', 'OP-4410'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV006-20230530-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'ids:device_id', 'DEV007'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:start_ts', '2024-04-02T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:end_ts', '2024-04-02T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:plant_code', 'FREMONT'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:line_id', 'L9'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:operator_id', 'OP-5502'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV007-20240402-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'ids:device_id', 'DEV001'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:start_ts', '2022-03-10T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:end_ts', '2022-03-10T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:plant_code', 'MARYSVILLE'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:line_id', 'T1'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:operator_id', 'OP-6101'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV001-20220310-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'ids:device_id', 'DEV002'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:start_ts', '2023-01-16T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:end_ts', '2023-01-16T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:plant_code', 'MARYSVILLE'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:line_id', 'T1'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:shift', 'B'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:operator_id', 'OP-6108'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV002-20230116-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'ids:device_id', 'DEV009'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:start_ts', '2021-06-01T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:end_ts', '2021-06-01T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:plant_code', 'AISIN-IN'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:line_id', 'T3'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:operator_id', 'OP-7202'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV009-20210601-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'ids:device_id', 'DEV009'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:start_ts', '2024-02-07T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:end_ts', '2024-02-08T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:plant_code', 'AISIN-IN'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:line_id', 'T3'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:shift', 'C'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:operator_id', 'OP-7210'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV009-20240207-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'ids:device_id', 'DEV010'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:start_ts', '2020-08-19T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:end_ts', '2020-08-19T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:plant_code', 'GETRAG-MI'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:line_id', 'T5'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:operator_id', 'OP-8301'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV010-20200819-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'ids:device_id', 'DEV011'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:start_ts', '2023-05-28T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:end_ts', '2023-05-28T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:plant_code', 'ZF-SC'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:line_id', 'T8'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:shift', 'B'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:operator_id', 'OP-9404'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV011-20230528-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'ids:device_id', 'DEV011'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:start_ts', '2024-03-30T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:end_ts', '2024-03-30T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:plant_code', 'ZF-SC'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:line_id', 'T8'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:operator_id', 'OP-9411'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV011-20240330-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'ids:device_id', 'DEV008'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:start_ts', '2022-03-08T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:end_ts', '2022-03-08T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:plant_code', 'EAST-LIBERTY'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:line_id', 'C1'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:operator_id', 'OP-1501'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV008-20220308-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'ids:device_id', 'DEV008'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:start_ts', '2023-01-14T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:end_ts', '2023-01-14T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:plant_code', 'EAST-LIBERTY'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:line_id', 'C1'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:shift', 'B'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:operator_id', 'OP-1507'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV008-20230114-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'ids:device_id', 'DEV006'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:start_ts', '2023-05-26T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:end_ts', '2023-05-26T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:plant_code', 'DINGOLFING'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:line_id', 'C6'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:shift', 'B'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:operator_id', 'OP-1603'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV006-20230526-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'ids:device_id', 'DEV012'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:start_ts', '2021-05-30T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:end_ts', '2021-05-30T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:plant_code', 'PRINCETON'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:line_id', 'C2'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:operator_id', 'OP-1702'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV012-20210530-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'ids:device_id', 'DEV012'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:start_ts', '2024-02-05T22:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:end_ts', '2024-02-06T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:plant_code', 'PRINCETON'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:line_id', 'C2'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:shift', 'C'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:operator_id', 'OP-1711'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV012-20240205-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'ids:device_id', 'DEV005'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:start_ts', '2020-08-17T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:end_ts', '2020-08-17T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:plant_code', 'FLATROCK'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:line_id', 'C4'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:operator_id', 'OP-1805'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV005-20200817-001', 'run:units_produced', '1'
+
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'ids:device_id', 'DEV007'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:start_ts', '2024-03-28T06:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:end_ts', '2024-03-28T14:00:00Z'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:plant_code', 'FREMONT'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:line_id', 'C9'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:shift', 'A'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:operator_id', 'OP-1908'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:status', 'COMPLETE'
+put 'DEVICE_SESSION', 'SES-DEV007-20240328-001', 'run:units_produced', '1'
+EOF
 
 echo "  ENGINE_BUILD rows..."
 hbase_shell <<'EOF'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'ids:engine_type_id', 'ENG001'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'ids:device_id', 'DEV001'
+put 'ENGINE_BUILD', 'EB-ENG001-00001', 'ids:session_id', 'SES-DEV001-20220312-001'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'production:build_date', '2022-03-12'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'production:plant_code', 'MARYSVILLE'
 put 'ENGINE_BUILD', 'EB-ENG001-00001', 'production:line_id', 'L2'
@@ -315,6 +538,7 @@ put 'ENGINE_BUILD', 'EB-ENG001-00001', 'production:operator_id', 'OP-1042'
 
 put 'ENGINE_BUILD', 'EB-ENG001-00002', 'ids:engine_type_id', 'ENG001'
 put 'ENGINE_BUILD', 'EB-ENG001-00002', 'ids:device_id', 'DEV002'
+put 'ENGINE_BUILD', 'EB-ENG001-00002', 'ids:session_id', 'SES-DEV002-20230118-001'
 put 'ENGINE_BUILD', 'EB-ENG001-00002', 'production:build_date', '2023-01-18'
 put 'ENGINE_BUILD', 'EB-ENG001-00002', 'production:plant_code', 'MARYSVILLE'
 put 'ENGINE_BUILD', 'EB-ENG001-00002', 'production:line_id', 'L2'
@@ -326,6 +550,7 @@ put 'ENGINE_BUILD', 'EB-ENG001-00002', 'production:operator_id', 'OP-1108'
 
 put 'ENGINE_BUILD', 'EB-ENG002-00001', 'ids:engine_type_id', 'ENG002'
 put 'ENGINE_BUILD', 'EB-ENG002-00001', 'ids:device_id', 'DEV003'
+put 'ENGINE_BUILD', 'EB-ENG002-00001', 'ids:session_id', 'SES-DEV003-20210604-001'
 put 'ENGINE_BUILD', 'EB-ENG002-00001', 'production:build_date', '2021-06-04'
 put 'ENGINE_BUILD', 'EB-ENG002-00001', 'production:plant_code', 'GEORGETOWN'
 put 'ENGINE_BUILD', 'EB-ENG002-00001', 'production:line_id', 'L1'
@@ -337,6 +562,7 @@ put 'ENGINE_BUILD', 'EB-ENG002-00001', 'production:operator_id', 'OP-2201'
 
 put 'ENGINE_BUILD', 'EB-ENG002-00002', 'ids:engine_type_id', 'ENG002'
 put 'ENGINE_BUILD', 'EB-ENG002-00002', 'ids:device_id', 'DEV004'
+put 'ENGINE_BUILD', 'EB-ENG002-00002', 'ids:session_id', 'SES-DEV004-20240209-001'
 put 'ENGINE_BUILD', 'EB-ENG002-00002', 'production:build_date', '2024-02-09'
 put 'ENGINE_BUILD', 'EB-ENG002-00002', 'production:plant_code', 'GEORGETOWN'
 put 'ENGINE_BUILD', 'EB-ENG002-00002', 'production:line_id', 'L1'
@@ -348,6 +574,7 @@ put 'ENGINE_BUILD', 'EB-ENG002-00002', 'production:operator_id', 'OP-2215'
 
 put 'ENGINE_BUILD', 'EB-ENG003-00001', 'ids:engine_type_id', 'ENG003'
 put 'ENGINE_BUILD', 'EB-ENG003-00001', 'ids:device_id', 'DEV005'
+put 'ENGINE_BUILD', 'EB-ENG003-00001', 'ids:session_id', 'SES-DEV005-20200821-001'
 put 'ENGINE_BUILD', 'EB-ENG003-00001', 'production:build_date', '2020-08-21'
 put 'ENGINE_BUILD', 'EB-ENG003-00001', 'production:plant_code', 'FLATROCK'
 put 'ENGINE_BUILD', 'EB-ENG003-00001', 'production:line_id', 'L4'
@@ -359,6 +586,7 @@ put 'ENGINE_BUILD', 'EB-ENG003-00001', 'production:operator_id', 'OP-3304'
 
 put 'ENGINE_BUILD', 'EB-ENG004-00001', 'ids:engine_type_id', 'ENG004'
 put 'ENGINE_BUILD', 'EB-ENG004-00001', 'ids:device_id', 'DEV006'
+put 'ENGINE_BUILD', 'EB-ENG004-00001', 'ids:session_id', 'SES-DEV006-20230530-001'
 put 'ENGINE_BUILD', 'EB-ENG004-00001', 'production:build_date', '2023-05-30'
 put 'ENGINE_BUILD', 'EB-ENG004-00001', 'production:plant_code', 'MUNICH'
 put 'ENGINE_BUILD', 'EB-ENG004-00001', 'production:line_id', 'L7'
@@ -370,6 +598,7 @@ put 'ENGINE_BUILD', 'EB-ENG004-00001', 'production:operator_id', 'OP-4410'
 
 put 'ENGINE_BUILD', 'EB-ENG005-00001', 'ids:engine_type_id', 'ENG005'
 put 'ENGINE_BUILD', 'EB-ENG005-00001', 'ids:device_id', 'DEV007'
+put 'ENGINE_BUILD', 'EB-ENG005-00001', 'ids:session_id', 'SES-DEV007-20240402-001'
 put 'ENGINE_BUILD', 'EB-ENG005-00001', 'production:build_date', '2024-04-02'
 put 'ENGINE_BUILD', 'EB-ENG005-00001', 'production:plant_code', 'FREMONT'
 put 'ENGINE_BUILD', 'EB-ENG005-00001', 'production:line_id', 'L9'
@@ -384,6 +613,7 @@ echo "  TRANSMISSION_BUILD rows..."
 hbase_shell <<'EOF'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00001', 'ids:transmission_type_id', 'TRN001'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00001', 'ids:device_id', 'DEV001'
+put 'TRANSMISSION_BUILD', 'TB-TRN001-00001', 'ids:session_id', 'SES-DEV001-20220310-001'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00001', 'production:build_date', '2022-03-10'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00001', 'production:plant_code', 'MARYSVILLE'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00001', 'production:line_id', 'T1'
@@ -395,6 +625,7 @@ put 'TRANSMISSION_BUILD', 'TB-TRN001-00001', 'production:operator_id', 'OP-6101'
 
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00002', 'ids:transmission_type_id', 'TRN001'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00002', 'ids:device_id', 'DEV002'
+put 'TRANSMISSION_BUILD', 'TB-TRN001-00002', 'ids:session_id', 'SES-DEV002-20230116-001'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00002', 'production:build_date', '2023-01-16'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00002', 'production:plant_code', 'MARYSVILLE'
 put 'TRANSMISSION_BUILD', 'TB-TRN001-00002', 'production:line_id', 'T1'
@@ -406,6 +637,7 @@ put 'TRANSMISSION_BUILD', 'TB-TRN001-00002', 'production:operator_id', 'OP-6108'
 
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00001', 'ids:transmission_type_id', 'TRN002'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00001', 'ids:device_id', 'DEV009'
+put 'TRANSMISSION_BUILD', 'TB-TRN002-00001', 'ids:session_id', 'SES-DEV009-20210601-001'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00001', 'production:build_date', '2021-06-01'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00001', 'production:plant_code', 'AISIN-IN'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00001', 'production:line_id', 'T3'
@@ -417,6 +649,7 @@ put 'TRANSMISSION_BUILD', 'TB-TRN002-00001', 'production:operator_id', 'OP-7202'
 
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00002', 'ids:transmission_type_id', 'TRN002'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00002', 'ids:device_id', 'DEV009'
+put 'TRANSMISSION_BUILD', 'TB-TRN002-00002', 'ids:session_id', 'SES-DEV009-20240207-001'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00002', 'production:build_date', '2024-02-07'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00002', 'production:plant_code', 'AISIN-IN'
 put 'TRANSMISSION_BUILD', 'TB-TRN002-00002', 'production:line_id', 'T3'
@@ -428,6 +661,7 @@ put 'TRANSMISSION_BUILD', 'TB-TRN002-00002', 'production:operator_id', 'OP-7210'
 
 put 'TRANSMISSION_BUILD', 'TB-TRN003-00001', 'ids:transmission_type_id', 'TRN003'
 put 'TRANSMISSION_BUILD', 'TB-TRN003-00001', 'ids:device_id', 'DEV010'
+put 'TRANSMISSION_BUILD', 'TB-TRN003-00001', 'ids:session_id', 'SES-DEV010-20200819-001'
 put 'TRANSMISSION_BUILD', 'TB-TRN003-00001', 'production:build_date', '2020-08-19'
 put 'TRANSMISSION_BUILD', 'TB-TRN003-00001', 'production:plant_code', 'GETRAG-MI'
 put 'TRANSMISSION_BUILD', 'TB-TRN003-00001', 'production:line_id', 'T5'
@@ -439,6 +673,7 @@ put 'TRANSMISSION_BUILD', 'TB-TRN003-00001', 'production:operator_id', 'OP-8301'
 
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00001', 'ids:transmission_type_id', 'TRN004'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00001', 'ids:device_id', 'DEV011'
+put 'TRANSMISSION_BUILD', 'TB-TRN004-00001', 'ids:session_id', 'SES-DEV011-20230528-001'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00001', 'production:build_date', '2023-05-28'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00001', 'production:plant_code', 'ZF-SC'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00001', 'production:line_id', 'T8'
@@ -450,6 +685,7 @@ put 'TRANSMISSION_BUILD', 'TB-TRN004-00001', 'production:operator_id', 'OP-9404'
 
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00002', 'ids:transmission_type_id', 'TRN004'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00002', 'ids:device_id', 'DEV011'
+put 'TRANSMISSION_BUILD', 'TB-TRN004-00002', 'ids:session_id', 'SES-DEV011-20240330-001'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00002', 'production:build_date', '2024-03-30'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00002', 'production:plant_code', 'ZF-SC'
 put 'TRANSMISSION_BUILD', 'TB-TRN004-00002', 'production:line_id', 'T8'
@@ -464,6 +700,7 @@ echo "  CHASSIS_BUILD rows..."
 hbase_shell <<'EOF'
 put 'CHASSIS_BUILD', 'CB-CHS001-00001', 'ids:chassis_type_id', 'CHS001'
 put 'CHASSIS_BUILD', 'CB-CHS001-00001', 'ids:device_id', 'DEV008'
+put 'CHASSIS_BUILD', 'CB-CHS001-00001', 'ids:session_id', 'SES-DEV008-20220308-001'
 put 'CHASSIS_BUILD', 'CB-CHS001-00001', 'production:build_date', '2022-03-08'
 put 'CHASSIS_BUILD', 'CB-CHS001-00001', 'production:plant_code', 'EAST-LIBERTY'
 put 'CHASSIS_BUILD', 'CB-CHS001-00001', 'production:line_id', 'C1'
@@ -475,6 +712,7 @@ put 'CHASSIS_BUILD', 'CB-CHS001-00001', 'production:operator_id', 'OP-1501'
 
 put 'CHASSIS_BUILD', 'CB-CHS001-00002', 'ids:chassis_type_id', 'CHS001'
 put 'CHASSIS_BUILD', 'CB-CHS001-00002', 'ids:device_id', 'DEV008'
+put 'CHASSIS_BUILD', 'CB-CHS001-00002', 'ids:session_id', 'SES-DEV008-20230114-001'
 put 'CHASSIS_BUILD', 'CB-CHS001-00002', 'production:build_date', '2023-01-14'
 put 'CHASSIS_BUILD', 'CB-CHS001-00002', 'production:plant_code', 'EAST-LIBERTY'
 put 'CHASSIS_BUILD', 'CB-CHS001-00002', 'production:line_id', 'C1'
@@ -486,6 +724,7 @@ put 'CHASSIS_BUILD', 'CB-CHS001-00002', 'production:operator_id', 'OP-1507'
 
 put 'CHASSIS_BUILD', 'CB-CHS001-00003', 'ids:chassis_type_id', 'CHS001'
 put 'CHASSIS_BUILD', 'CB-CHS001-00003', 'ids:device_id', 'DEV006'
+put 'CHASSIS_BUILD', 'CB-CHS001-00003', 'ids:session_id', 'SES-DEV006-20230526-001'
 put 'CHASSIS_BUILD', 'CB-CHS001-00003', 'production:build_date', '2023-05-26'
 put 'CHASSIS_BUILD', 'CB-CHS001-00003', 'production:plant_code', 'DINGOLFING'
 put 'CHASSIS_BUILD', 'CB-CHS001-00003', 'production:line_id', 'C6'
@@ -497,6 +736,7 @@ put 'CHASSIS_BUILD', 'CB-CHS001-00003', 'production:operator_id', 'OP-1603'
 
 put 'CHASSIS_BUILD', 'CB-CHS002-00001', 'ids:chassis_type_id', 'CHS002'
 put 'CHASSIS_BUILD', 'CB-CHS002-00001', 'ids:device_id', 'DEV012'
+put 'CHASSIS_BUILD', 'CB-CHS002-00001', 'ids:session_id', 'SES-DEV012-20210530-001'
 put 'CHASSIS_BUILD', 'CB-CHS002-00001', 'production:build_date', '2021-05-30'
 put 'CHASSIS_BUILD', 'CB-CHS002-00001', 'production:plant_code', 'PRINCETON'
 put 'CHASSIS_BUILD', 'CB-CHS002-00001', 'production:line_id', 'C2'
@@ -508,6 +748,7 @@ put 'CHASSIS_BUILD', 'CB-CHS002-00001', 'production:operator_id', 'OP-1702'
 
 put 'CHASSIS_BUILD', 'CB-CHS002-00002', 'ids:chassis_type_id', 'CHS002'
 put 'CHASSIS_BUILD', 'CB-CHS002-00002', 'ids:device_id', 'DEV012'
+put 'CHASSIS_BUILD', 'CB-CHS002-00002', 'ids:session_id', 'SES-DEV012-20240205-001'
 put 'CHASSIS_BUILD', 'CB-CHS002-00002', 'production:build_date', '2024-02-05'
 put 'CHASSIS_BUILD', 'CB-CHS002-00002', 'production:plant_code', 'PRINCETON'
 put 'CHASSIS_BUILD', 'CB-CHS002-00002', 'production:line_id', 'C2'
@@ -519,6 +760,7 @@ put 'CHASSIS_BUILD', 'CB-CHS002-00002', 'production:operator_id', 'OP-1711'
 
 put 'CHASSIS_BUILD', 'CB-CHS003-00001', 'ids:chassis_type_id', 'CHS003'
 put 'CHASSIS_BUILD', 'CB-CHS003-00001', 'ids:device_id', 'DEV005'
+put 'CHASSIS_BUILD', 'CB-CHS003-00001', 'ids:session_id', 'SES-DEV005-20200817-001'
 put 'CHASSIS_BUILD', 'CB-CHS003-00001', 'production:build_date', '2020-08-17'
 put 'CHASSIS_BUILD', 'CB-CHS003-00001', 'production:plant_code', 'FLATROCK'
 put 'CHASSIS_BUILD', 'CB-CHS003-00001', 'production:line_id', 'C4'
@@ -530,6 +772,7 @@ put 'CHASSIS_BUILD', 'CB-CHS003-00001', 'production:operator_id', 'OP-1805'
 
 put 'CHASSIS_BUILD', 'CB-CHS004-00001', 'ids:chassis_type_id', 'CHS004'
 put 'CHASSIS_BUILD', 'CB-CHS004-00001', 'ids:device_id', 'DEV007'
+put 'CHASSIS_BUILD', 'CB-CHS004-00001', 'ids:session_id', 'SES-DEV007-20240328-001'
 put 'CHASSIS_BUILD', 'CB-CHS004-00001', 'production:build_date', '2024-03-28'
 put 'CHASSIS_BUILD', 'CB-CHS004-00001', 'production:plant_code', 'FREMONT'
 put 'CHASSIS_BUILD', 'CB-CHS004-00001', 'production:line_id', 'C9'
@@ -636,13 +879,16 @@ else
     -d '{"sql": "CREATE VIEW IF NOT EXISTS \"DEVICE\" (\"rowkey\" VARCHAR PRIMARY KEY, \"specs\".\"name\" VARCHAR, \"specs\".\"device_type\" VARCHAR, \"specs\".\"manufacturer\" VARCHAR, \"specs\".\"model\" VARCHAR, \"specs\".\"plant_code\" VARCHAR, \"specs\".\"status\" VARCHAR)"}' | jq .
 
   curl -s -X POST "${API_URL}/execute" -H "Content-Type: application/json" \
-    -d '{"sql": "CREATE VIEW IF NOT EXISTS \"ENGINE_BUILD\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"engine_type_id\" VARCHAR, \"ids\".\"device_id\" VARCHAR, \"production\".\"build_date\" VARCHAR, \"production\".\"plant_code\" VARCHAR, \"production\".\"line_id\" VARCHAR, \"production\".\"shift\" VARCHAR, \"production\".\"batch_number\" VARCHAR, \"production\".\"serial_number\" VARCHAR, \"production\".\"qc_status\" VARCHAR, \"production\".\"operator_id\" VARCHAR)"}' | jq .
+    -d '{"sql": "CREATE VIEW IF NOT EXISTS \"DEVICE_SESSION\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"device_id\" VARCHAR, \"run\".\"start_ts\" VARCHAR, \"run\".\"end_ts\" VARCHAR, \"run\".\"plant_code\" VARCHAR, \"run\".\"line_id\" VARCHAR, \"run\".\"shift\" VARCHAR, \"run\".\"operator_id\" VARCHAR, \"run\".\"status\" VARCHAR, \"run\".\"units_produced\" VARCHAR)"}' | jq .
 
   curl -s -X POST "${API_URL}/execute" -H "Content-Type: application/json" \
-    -d '{"sql": "CREATE VIEW IF NOT EXISTS \"TRANSMISSION_BUILD\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"transmission_type_id\" VARCHAR, \"ids\".\"device_id\" VARCHAR, \"production\".\"build_date\" VARCHAR, \"production\".\"plant_code\" VARCHAR, \"production\".\"line_id\" VARCHAR, \"production\".\"shift\" VARCHAR, \"production\".\"batch_number\" VARCHAR, \"production\".\"serial_number\" VARCHAR, \"production\".\"qc_status\" VARCHAR, \"production\".\"operator_id\" VARCHAR)"}' | jq .
+    -d '{"sql": "CREATE VIEW IF NOT EXISTS \"ENGINE_BUILD\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"engine_type_id\" VARCHAR, \"ids\".\"device_id\" VARCHAR, \"ids\".\"session_id\" VARCHAR, \"production\".\"build_date\" VARCHAR, \"production\".\"plant_code\" VARCHAR, \"production\".\"line_id\" VARCHAR, \"production\".\"shift\" VARCHAR, \"production\".\"batch_number\" VARCHAR, \"production\".\"serial_number\" VARCHAR, \"production\".\"qc_status\" VARCHAR, \"production\".\"operator_id\" VARCHAR)"}' | jq .
 
   curl -s -X POST "${API_URL}/execute" -H "Content-Type: application/json" \
-    -d '{"sql": "CREATE VIEW IF NOT EXISTS \"CHASSIS_BUILD\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"chassis_type_id\" VARCHAR, \"ids\".\"device_id\" VARCHAR, \"production\".\"build_date\" VARCHAR, \"production\".\"plant_code\" VARCHAR, \"production\".\"line_id\" VARCHAR, \"production\".\"shift\" VARCHAR, \"production\".\"batch_number\" VARCHAR, \"production\".\"serial_number\" VARCHAR, \"production\".\"qc_status\" VARCHAR, \"production\".\"operator_id\" VARCHAR)"}' | jq .
+    -d '{"sql": "CREATE VIEW IF NOT EXISTS \"TRANSMISSION_BUILD\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"transmission_type_id\" VARCHAR, \"ids\".\"device_id\" VARCHAR, \"ids\".\"session_id\" VARCHAR, \"production\".\"build_date\" VARCHAR, \"production\".\"plant_code\" VARCHAR, \"production\".\"line_id\" VARCHAR, \"production\".\"shift\" VARCHAR, \"production\".\"batch_number\" VARCHAR, \"production\".\"serial_number\" VARCHAR, \"production\".\"qc_status\" VARCHAR, \"production\".\"operator_id\" VARCHAR)"}' | jq .
+
+  curl -s -X POST "${API_URL}/execute" -H "Content-Type: application/json" \
+    -d '{"sql": "CREATE VIEW IF NOT EXISTS \"CHASSIS_BUILD\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"chassis_type_id\" VARCHAR, \"ids\".\"device_id\" VARCHAR, \"ids\".\"session_id\" VARCHAR, \"production\".\"build_date\" VARCHAR, \"production\".\"plant_code\" VARCHAR, \"production\".\"line_id\" VARCHAR, \"production\".\"shift\" VARCHAR, \"production\".\"batch_number\" VARCHAR, \"production\".\"serial_number\" VARCHAR, \"production\".\"qc_status\" VARCHAR, \"production\".\"operator_id\" VARCHAR)"}' | jq .
 
   curl -s -X POST "${API_URL}/execute" -H "Content-Type: application/json" \
     -d '{"sql": "CREATE VIEW IF NOT EXISTS \"VEHICLE\" (\"rowkey\" VARCHAR PRIMARY KEY, \"ids\".\"engine_build_id\" VARCHAR, \"ids\".\"transmission_build_id\" VARCHAR, \"ids\".\"chassis_build_id\" VARCHAR, \"info\".\"make\" VARCHAR, \"info\".\"model\" VARCHAR, \"info\".\"year\" VARCHAR, \"info\".\"color\" VARCHAR, \"info\".\"trim\" VARCHAR)"}' | jq .
@@ -667,25 +913,32 @@ else
     | jq '{rowCount, rows}'
 
   echo ""
-  echo "Query 2: Engine build with type + device"
+  echo "Query 2: Device session by ID"
   curl -s -X POST "${API_URL}/query" -H "Content-Type: application/json" \
-    -d '{"sql": "SELECT eb.\"rowkey\" as engine_build_id, eb.\"ids\".\"engine_type_id\", eb.\"ids\".\"device_id\", eb.\"production\".\"plant_code\", e.\"specs\".\"horsepower\", d.\"specs\".\"name\" as device_name, d.\"specs\".\"device_type\" FROM \"ENGINE_BUILD\" eb JOIN \"ENGINE\" e ON eb.\"ids\".\"engine_type_id\" = e.\"rowkey\" JOIN \"DEVICE\" d ON eb.\"ids\".\"device_id\" = d.\"rowkey\" WHERE eb.\"rowkey\" = '\''EB-ENG001-00001'\''"}' \
+    -d '{"sql": "SELECT \"rowkey\" as session_id, \"ids\".\"device_id\", \"run\".\"start_ts\", \"run\".\"end_ts\", \"run\".\"plant_code\", \"run\".\"shift\", \"run\".\"status\", \"run\".\"units_produced\" FROM \"DEVICE_SESSION\" WHERE \"rowkey\" = '\''SES-DEV008-20220308-001'\''"}' \
     | jq '{rowCount, rows}'
 
   echo ""
-  echo "Query 3: Complete build sheet (builds + types + devices)"
+  echo "Query 3: Engine build with type + device + session"
   curl -s -X POST "${API_URL}/query" -H "Content-Type: application/json" \
-    -d '{"sql": "SELECT v.\"rowkey\" as vin, v.\"info\".\"make\" as make, v.\"info\".\"model\" as model, eb.\"rowkey\" as engine_build_id, e.\"specs\".\"horsepower\" as horsepower, ed.\"rowkey\" as engine_device_id, ed.\"specs\".\"name\" as engine_device_name, tb.\"rowkey\" as transmission_build_id, t.\"specs\".\"type\" as transmission_type, td.\"rowkey\" as transmission_device_id, td.\"specs\".\"name\" as transmission_device_name, cb.\"rowkey\" as chassis_build_id, c.\"specs\".\"body_style\" as body_style, cd.\"rowkey\" as chassis_device_id, cd.\"specs\".\"name\" as chassis_device_name FROM \"VEHICLE\" v JOIN \"ENGINE_BUILD\" eb ON v.\"ids\".\"engine_build_id\" = eb.\"rowkey\" JOIN \"ENGINE\" e ON eb.\"ids\".\"engine_type_id\" = e.\"rowkey\" JOIN \"DEVICE\" ed ON eb.\"ids\".\"device_id\" = ed.\"rowkey\" JOIN \"TRANSMISSION_BUILD\" tb ON v.\"ids\".\"transmission_build_id\" = tb.\"rowkey\" JOIN \"TRANSMISSION\" t ON tb.\"ids\".\"transmission_type_id\" = t.\"rowkey\" JOIN \"DEVICE\" td ON tb.\"ids\".\"device_id\" = td.\"rowkey\" JOIN \"CHASSIS_BUILD\" cb ON v.\"ids\".\"chassis_build_id\" = cb.\"rowkey\" JOIN \"CHASSIS\" c ON cb.\"ids\".\"chassis_type_id\" = c.\"rowkey\" JOIN \"DEVICE\" cd ON cb.\"ids\".\"device_id\" = cd.\"rowkey\" WHERE v.\"rowkey\" = '\''1HGCM82633A004352'\''"}' \
+    -d '{"sql": "SELECT eb.\"rowkey\" as engine_build_id, eb.\"ids\".\"engine_type_id\", eb.\"ids\".\"device_id\", eb.\"ids\".\"session_id\", eb.\"production\".\"plant_code\", e.\"specs\".\"horsepower\", d.\"specs\".\"name\" as device_name, s.\"run\".\"status\" as session_status FROM \"ENGINE_BUILD\" eb JOIN \"ENGINE\" e ON eb.\"ids\".\"engine_type_id\" = e.\"rowkey\" JOIN \"DEVICE\" d ON eb.\"ids\".\"device_id\" = d.\"rowkey\" JOIN \"DEVICE_SESSION\" s ON eb.\"ids\".\"session_id\" = s.\"rowkey\" WHERE eb.\"rowkey\" = '\''EB-ENG001-00001'\''"}' \
+    | jq '{rowCount, rows}'
+
+  echo ""
+  echo "Query 4: Complete build sheet (builds + types + devices + sessions)"
+  curl -s -X POST "${API_URL}/query" -H "Content-Type: application/json" \
+    -d '{"sql": "SELECT v.\"rowkey\" as vin, v.\"info\".\"make\" as make, v.\"info\".\"model\" as model, eb.\"rowkey\" as engine_build_id, eb.\"ids\".\"session_id\" as engine_session_id, e.\"specs\".\"horsepower\" as horsepower, ed.\"specs\".\"name\" as engine_device_name, tb.\"rowkey\" as transmission_build_id, tb.\"ids\".\"session_id\" as transmission_session_id, t.\"specs\".\"type\" as transmission_type, cb.\"rowkey\" as chassis_build_id, cb.\"ids\".\"session_id\" as chassis_session_id, c.\"specs\".\"body_style\" as body_style, cd.\"specs\".\"name\" as chassis_device_name FROM \"VEHICLE\" v JOIN \"ENGINE_BUILD\" eb ON v.\"ids\".\"engine_build_id\" = eb.\"rowkey\" JOIN \"ENGINE\" e ON eb.\"ids\".\"engine_type_id\" = e.\"rowkey\" JOIN \"DEVICE\" ed ON eb.\"ids\".\"device_id\" = ed.\"rowkey\" JOIN \"DEVICE_SESSION\" es ON eb.\"ids\".\"session_id\" = es.\"rowkey\" JOIN \"TRANSMISSION_BUILD\" tb ON v.\"ids\".\"transmission_build_id\" = tb.\"rowkey\" JOIN \"TRANSMISSION\" t ON tb.\"ids\".\"transmission_type_id\" = t.\"rowkey\" JOIN \"DEVICE\" td ON tb.\"ids\".\"device_id\" = td.\"rowkey\" JOIN \"DEVICE_SESSION\" ts ON tb.\"ids\".\"session_id\" = ts.\"rowkey\" JOIN \"CHASSIS_BUILD\" cb ON v.\"ids\".\"chassis_build_id\" = cb.\"rowkey\" JOIN \"CHASSIS\" c ON cb.\"ids\".\"chassis_type_id\" = c.\"rowkey\" JOIN \"DEVICE\" cd ON cb.\"ids\".\"device_id\" = cd.\"rowkey\" JOIN \"DEVICE_SESSION\" cs ON cb.\"ids\".\"session_id\" = cs.\"rowkey\" WHERE v.\"rowkey\" = '\''1HGCM82633A004352'\''"}' \
     | jq '{rowCount, rows}'
   echo ""
 fi
 
 echo "=========================================="
-echo "Done! Vehicle 360 type + device + build tables created."
+echo "Done! Vehicle 360 type + device + session + build tables created."
 echo "=========================================="
 echo ""
 echo "Type catalogs:  ENGINE, TRANSMISSION, CHASSIS"
 echo "Devices:        DEVICE"
+echo "Sessions:       DEVICE_SESSION"
 echo "Build tables:   ENGINE_BUILD, TRANSMISSION_BUILD, CHASSIS_BUILD"
 echo "Assembly:       VEHICLE (VIN → *_build_id)"
 echo ""
