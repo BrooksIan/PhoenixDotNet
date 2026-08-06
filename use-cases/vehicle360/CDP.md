@@ -147,7 +147,11 @@ scan 'vehicle360:VEHICLE', {LIMIT => 2}
 
 After views are created, query VIN → builds → types / devices / sessions. Garage Bay renders the JOIN as a compact build sheet:
 
-![Full join view by VIN](../../images/FullJoinView.png)
+![Full join view by VIN](../../images/FullJoinByVIN.png)
+
+Session lookup for the Civic chassis run (`SES-DEV008-20220308-001`):
+
+![Device session SES-DEV008-20220308-001](../../images/SessionID_Info.png)
 
 Architecture diagrams (see also [`README.md`](README.md)):
 

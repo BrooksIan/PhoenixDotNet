@@ -532,44 +532,55 @@ FROM "VEHICLE"
 WHERE "rowkey" = '1HGCM82633A004352'
 ```
 
-### Query 2: Full build sheet (VIN → builds → types / devices)
+### Query 2: Full build sheet (VIN → builds → types / devices / sessions)
 
 ```sql
 SELECT
   v."rowkey" as vin,
-  v."info"."make",
-  v."info"."model",
-  v."info"."year",
+  v."info"."make" as make,
+  v."info"."model" as model,
+  v."info"."year" as year,
+  v."info"."color" as color,
+  v."info"."trim" as trim,
   eb."rowkey" as engine_build_id,
+  eb."ids"."session_id" as engine_session_id,
   eb."production"."plant_code" as engine_plant,
-  e."specs"."horsepower",
+  e."specs"."horsepower" as horsepower,
   ed."rowkey" as engine_device_id,
   ed."specs"."name" as engine_device_name,
+  es."run"."status" as engine_session_status,
   tb."rowkey" as transmission_build_id,
-  t."specs"."type",
-  t."specs"."drive_type",
+  tb."ids"."session_id" as transmission_session_id,
+  t."specs"."type" as transmission_type,
+  t."specs"."drive_type" as drive_type,
   td."rowkey" as transmission_device_id,
   td."specs"."name" as transmission_device_name,
+  ts."run"."status" as transmission_session_status,
   cb."rowkey" as chassis_build_id,
-  c."specs"."body_style",
+  cb."ids"."session_id" as chassis_session_id,
+  c."specs"."body_style" as body_style,
   cd."rowkey" as chassis_device_id,
-  cd."specs"."name" as chassis_device_name
+  cd."specs"."name" as chassis_device_name,
+  cs."run"."status" as chassis_session_status
 FROM "VEHICLE" v
 JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
 JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
 JOIN "DEVICE" ed ON eb."ids"."device_id" = ed."rowkey"
+JOIN "DEVICE_SESSION" es ON eb."ids"."session_id" = es."rowkey"
 JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
 JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
 JOIN "DEVICE" td ON tb."ids"."device_id" = td."rowkey"
+JOIN "DEVICE_SESSION" ts ON tb."ids"."session_id" = ts."rowkey"
 JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
 JOIN "CHASSIS" c ON cb."ids"."chassis_type_id" = c."rowkey"
 JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
+JOIN "DEVICE_SESSION" cs ON cb."ids"."session_id" = cs."rowkey"
 WHERE v."rowkey" = '1HGCM82633A004352'
 ```
 
-Garage Bay result for this query (**Build sheet — one VIN**):
+Garage Bay result for this query (**Build sheet — one VIN** / `completeVehicleOne`):
 
-![Full join view by VIN](../../images/FullJoinView.png)
+![Full join view by VIN](../../images/FullJoinByVIN.png)
 
 See [Example Diagrams](#example-diagrams) for the JOIN / lineage architecture diagram.
 
@@ -588,7 +599,31 @@ WHERE eb."ids"."engine_type_id" = 'ENG001'
 ORDER BY v."rowkey"
 ```
 
-### Query 4: VINs / builds from one device session
+### Query 4: Device session by ID
+
+Look up one production-run log (Garage Bay: **Session SES-DEV008-…** / `sessionById`):
+
+```sql
+SELECT
+  "rowkey" as session_id,
+  "ids"."device_id",
+  "run"."start_ts",
+  "run"."end_ts",
+  "run"."plant_code",
+  "run"."line_id",
+  "run"."shift",
+  "run"."operator_id",
+  "run"."status",
+  "run"."units_produced"
+FROM "DEVICE_SESSION"
+WHERE "rowkey" = 'SES-DEV008-20220308-001'
+```
+
+![Device session SES-DEV008-20220308-001](../../images/SessionID_Info.png)
+
+This is the Civic chassis session (`DEV008` @ EAST-LIBERTY, shift A) referenced from `CB-CHS001-00001` in the full build sheet above.
+
+### Query 5: VINs / builds from one device session
 
 Trace a production run to the finished vehicle (example: Civic chassis session).
 
@@ -612,7 +647,7 @@ JOIN "VEHICLE" v ON v."ids"."chassis_build_id" = cb."rowkey"
 WHERE s."rowkey" = 'SES-DEV008-20220308-001'
 ```
 
-### Query 5: VINs that used the same device
+### Query 6: VINs that used the same device
 
 A manufacturing device can appear on engine, transmission, and/or chassis builds. Union the three paths to list every VIN that touched a given `device_id` (example: `DEV008` — East Liberty Body Fixture on Civic and Accord chassis).
 
@@ -664,7 +699,7 @@ WHERE cb."ids"."device_id" = 'DEV008'
 ORDER BY vin, build_role
 ```
 
-### Query 6: High-horsepower vehicles
+### Query 7: High-horsepower vehicles
 
 ```sql
 SELECT
@@ -680,7 +715,7 @@ WHERE TO_NUMBER(e."specs"."horsepower") >= 300
 ORDER BY TO_NUMBER(e."specs"."horsepower") DESC
 ```
 
-### Query 7: Count vehicles per transmission type
+### Query 8: Count vehicles per transmission type
 
 ```sql
 SELECT
@@ -735,11 +770,11 @@ Find every vehicle built with a given engine type (via builds) (Query 3).
 
 ### 3. Device Traceability
 
-Find every VIN that used a manufacturing device on any component build (Query 5). Useful for recalls, QC holds, or maintenance impact analysis.
+Find every VIN that used a manufacturing device on any component build (Query 6). Useful for recalls, QC holds, or maintenance impact analysis.
 
 ### 4. Session Traceability
 
-Find the build and VIN produced in a specific device production run (Query 4). Useful for shift audits and run-level quality holds.
+Look up a production-run log by session ID (Query 4), then follow it to the finished VIN (Query 5). Useful for shift audits and run-level quality holds.
 
 ### 5. Performance Filtering
 
@@ -763,9 +798,15 @@ VIN-centric lineage through builds, type catalogs, devices, and production sessi
 
 ![Vehicle lineage and device tracking architecture flow](../../images/vehicle360_fullJoin.png)
 
-In Garage Bay, **Build sheet — one VIN** (`completeVehicleOne`) runs this JOIN path for VIN `1HGCM82633A004352`:
+In Garage Bay, **Build sheet — one VIN** (`completeVehicleOne`) runs this JOIN path for VIN `1HGCM82633A004352` (includes `DEV` / `SES` on each component):
 
-![Full join view by VIN](../../images/FullJoinView.png)
+![Full join view by VIN](../../images/FullJoinByVIN.png)
+
+### Device session detail
+
+Garage Bay **Session SES-DEV008-…** (`sessionById`) for the Civic chassis session:
+
+![Device session SES-DEV008-20220308-001](../../images/SessionID_Info.png)
 
 ## Related Documentation
 

@@ -872,6 +872,7 @@ WHERE v."rowkey" = '1HGCM82633A004352'`,
   eb."rowkey" as engine_build_id,
   eb."ids"."engine_type_id" as engine_type_id,
   eb."ids"."device_id" as engine_device_id,
+  eb."ids"."session_id" as engine_session_id,
   eb."production"."plant_code" as engine_plant,
   eb."production"."serial_number" as engine_serial,
   eb."production"."qc_status" as engine_qc,
@@ -883,9 +884,11 @@ WHERE v."rowkey" = '1HGCM82633A004352'`,
   e."specs"."fuel_type" as fuel_type,
   ed."specs"."name" as engine_device_name,
   ed."specs"."device_type" as engine_device_type,
+  es."run"."status" as engine_session_status,
   tb."rowkey" as transmission_build_id,
   tb."ids"."transmission_type_id" as transmission_type_id,
   tb."ids"."device_id" as transmission_device_id,
+  tb."ids"."session_id" as transmission_session_id,
   tb."production"."plant_code" as transmission_plant,
   tb."production"."serial_number" as transmission_serial,
   t."specs"."manufacturer" as transmission_mfr,
@@ -895,9 +898,11 @@ WHERE v."rowkey" = '1HGCM82633A004352'`,
   t."specs"."drive_type" as drive_type,
   td."specs"."name" as transmission_device_name,
   td."specs"."device_type" as transmission_device_type,
+  ts."run"."status" as transmission_session_status,
   cb."rowkey" as chassis_build_id,
   cb."ids"."chassis_type_id" as chassis_type_id,
   cb."ids"."device_id" as chassis_device_id,
+  cb."ids"."session_id" as chassis_session_id,
   cb."production"."plant_code" as chassis_plant,
   cb."production"."serial_number" as chassis_serial,
   c."specs"."body_style" as body_style,
@@ -906,17 +911,21 @@ WHERE v."rowkey" = '1HGCM82633A004352'`,
   c."specs"."curb_weight_lb" as curb_weight_lb,
   c."specs"."doors" as doors,
   cd."specs"."name" as chassis_device_name,
-  cd."specs"."device_type" as chassis_device_type
+  cd."specs"."device_type" as chassis_device_type,
+  cs."run"."status" as chassis_session_status
 FROM "VEHICLE" v
 JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
 JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
 JOIN "DEVICE" ed ON eb."ids"."device_id" = ed."rowkey"
+JOIN "DEVICE_SESSION" es ON eb."ids"."session_id" = es."rowkey"
 JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
 JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
 JOIN "DEVICE" td ON tb."ids"."device_id" = td."rowkey"
+JOIN "DEVICE_SESSION" ts ON tb."ids"."session_id" = ts."rowkey"
 JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
 JOIN "CHASSIS" c ON cb."ids"."chassis_type_id" = c."rowkey"
 JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
+JOIN "DEVICE_SESSION" cs ON cb."ids"."session_id" = cs."rowkey"
 ORDER BY v."info"."make", v."info"."model"`,
             vinsByDevice: `SELECT
   v."rowkey" as vin,
@@ -1091,6 +1100,8 @@ ORDER BY "info"."make"`,
                 const engineDeviceId = fieldValue(row, columns, ['engine_device_id']);
                 const engineDeviceName = fieldValue(row, columns, ['engine_device_name', 'device_name']);
                 const engineDeviceType = fieldValue(row, columns, ['engine_device_type', 'device_type']);
+                const engineSessionId = fieldValue(row, columns, ['engine_session_id']);
+                const engineSessionStatus = fieldValue(row, columns, ['engine_session_status']);
 
                 const transMfr = fieldValue(row, columns, ['transmission_mfr']);
                 const transModel = fieldValue(row, columns, ['transmission_model']);
@@ -1102,6 +1113,8 @@ ORDER BY "info"."make"`,
                 const transDeviceId = fieldValue(row, columns, ['transmission_device_id']);
                 const transDeviceName = fieldValue(row, columns, ['transmission_device_name']);
                 const transDeviceType = fieldValue(row, columns, ['transmission_device_type']);
+                const transSessionId = fieldValue(row, columns, ['transmission_session_id']);
+                const transSessionStatus = fieldValue(row, columns, ['transmission_session_status']);
 
                 const body = fieldValue(row, columns, ['body_style']);
                 const material = fieldValue(row, columns, ['material']);
@@ -1113,6 +1126,8 @@ ORDER BY "info"."make"`,
                 const chassisDeviceId = fieldValue(row, columns, ['chassis_device_id']);
                 const chassisDeviceName = fieldValue(row, columns, ['chassis_device_name']);
                 const chassisDeviceType = fieldValue(row, columns, ['chassis_device_type']);
+                const chassisSessionId = fieldValue(row, columns, ['chassis_session_id']);
+                const chassisSessionStatus = fieldValue(row, columns, ['chassis_session_status']);
 
                 const titleBits = joinBits([make, model, year, color, trim]);
                 const idBits = joinBits([
@@ -1130,7 +1145,8 @@ ORDER BY "info"."make"`,
                     enginePlant,
                     engineSerial ? `S/N ${engineSerial}` : '',
                     engineQc,
-                    engineDeviceId || engineDeviceName ? `DEV ${joinBits([engineDeviceId, engineDeviceName, engineDeviceType])}` : ''
+                    engineDeviceId || engineDeviceName ? `DEV ${joinBits([engineDeviceId, engineDeviceName, engineDeviceType])}` : '',
+                    engineSessionId ? `SES ${joinBits([engineSessionId, engineSessionStatus])}` : ''
                 ]);
                 const transBits = joinBits([
                     transMfr,
@@ -1140,7 +1156,8 @@ ORDER BY "info"."make"`,
                     drive,
                     transPlant,
                     transSerial ? `S/N ${transSerial}` : '',
-                    transDeviceId || transDeviceName ? `DEV ${joinBits([transDeviceId, transDeviceName, transDeviceType])}` : ''
+                    transDeviceId || transDeviceName ? `DEV ${joinBits([transDeviceId, transDeviceName, transDeviceType])}` : '',
+                    transSessionId ? `SES ${joinBits([transSessionId, transSessionStatus])}` : ''
                 ]);
                 const chassisBits = joinBits([
                     body,
@@ -1150,7 +1167,8 @@ ORDER BY "info"."make"`,
                     doors ? `${doors} doors` : '',
                     chassisPlant,
                     chassisSerial ? `S/N ${chassisSerial}` : '',
-                    chassisDeviceId || chassisDeviceName ? `DEV ${joinBits([chassisDeviceId, chassisDeviceName, chassisDeviceType])}` : ''
+                    chassisDeviceId || chassisDeviceName ? `DEV ${joinBits([chassisDeviceId, chassisDeviceName, chassisDeviceType])}` : '',
+                    chassisSessionId ? `SES ${joinBits([chassisSessionId, chassisSessionStatus])}` : ''
                 ]);
 
                 html += '<div class="build-sheet">';

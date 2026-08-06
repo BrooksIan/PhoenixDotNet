@@ -106,7 +106,8 @@ PhoenixDotNet/
 │   ├── phoenix_view_example.png   # Phoenix view query example
 │   ├── vehicle360_table_view.png  # Vehicle 360 nine-table ER architecture
 │   ├── vehicle360_fullJoin.png    # Vehicle 360 VIN lineage / JOIN flow
-│   └── FullJoinView.png           # Vehicle 360 Garage Bay full JOIN result
+│   ├── FullJoinByVIN.png          # Vehicle 360 Garage Bay full JOIN (one VIN)
+│   └── SessionID_Info.png         # Vehicle 360 DEVICE_SESSION lookup result
 ├── appsettings.json               # Configuration file
 ├── docker-compose.yml             # Docker Compose for OPDB (includes Phoenix)
 ├── hbase-site.xml                 # HBase configuration (mounted to container)
@@ -266,7 +267,10 @@ Nine-table model: type catalogs → `DEVICE` / `DEVICE_SESSION` → physical bui
 ![Vehicle lineage and device tracking architecture flow](images/vehicle360_fullJoin.png)
 
 **Full JOIN view (Garage Bay result for one VIN):**
-![Full join view by VIN](images/FullJoinView.png)
+![Full join view by VIN](images/FullJoinByVIN.png)
+
+**Device session lookup (`SES-DEV008-20220308-001`):**
+![Device session SES-DEV008-20220308-001](images/SessionID_Info.png)
 
 ### Features
 
@@ -836,7 +840,7 @@ cd tests && ./smoke_test.sh
 - [Documentation/CONTRIBUTING.md](Documentation/CONTRIBUTING.md) - Contribution guidelines
 
 ### Use Cases
-- [use-cases/vehicle360/README.md](use-cases/vehicle360/README.md) - **Vehicle 360**: Catalogs + DEVICE_SESSION production runs + build tables + VIN assembly; architecture diagrams in `images/vehicle360_*.png`
+- [use-cases/vehicle360/README.md](use-cases/vehicle360/README.md) - **Vehicle 360**: Catalogs + DEVICE_SESSION production runs + build tables + VIN assembly; diagrams in `images/vehicle360_*.png`, `FullJoinByVIN.png`, `SessionID_Info.png`
 - [use-cases/vehicle360/CDP.md](use-cases/vehicle360/CDP.md) - CDP 7.1.9 setup examples for Vehicle 360
 - [use-cases/student360/README.md](use-cases/student360/README.md) - **Student 360-Degree View**: Single wide HBase table with Phoenix view
 - [use-cases/soldier360/README.md](use-cases/soldier360/README.md) - **Soldier 360-Degree View**: Single wide HBase table with Phoenix view
