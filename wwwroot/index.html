@@ -556,13 +556,15 @@
                     <li>Seed parts inventory: <code>./use-cases/vehicle360/create_vehicle360_tables.sh</code></li>
                     <li>Mount Phoenix views with the yellow buttons, then hit <strong>Execute Command</strong></li>
                     <li>Run VIN / JOIN lookups with <strong>Execute Query</strong></li>
-                    <li>Confirm racks with List Views: ENGINE, TRANSMISSION, CHASSIS, VEHICLE</li>
+                    <li>Confirm racks with List Views: ENGINE*, *_BUILD, VEHICLE</li>
                 </ul>
                 <h3 style="margin-top: 14px;">Parts layout</h3>
                 <ul>
-                    <li><code>ENGINE</code>, <code>TRANSMISSION</code>, <code>CHASSIS</code> — component catalogs</li>
-                    <li><code>VEHICLE</code> — VIN key; links one of each component ID</li>
-                    <li>Complete build sheet = JOIN across all four views</li>
+                    <li><code>ENGINE</code>, <code>TRANSMISSION</code>, <code>CHASSIS</code> — type catalogs</li>
+                    <li><code>DEVICE</code> — shared manufacturing equipment</li>
+                    <li><code>ENGINE_BUILD</code>, <code>TRANSMISSION_BUILD</code>, <code>CHASSIS_BUILD</code> — physical units + production + device</li>
+                    <li><code>VEHICLE</code> — VIN key; links one of each <em>build</em> ID</li>
+                    <li>Complete build sheet = VIN → builds → types / devices</li>
                 </ul>
             </div>
 
@@ -581,23 +583,30 @@
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createEngineView')">Mount ENGINE view</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createTransmissionView')">Mount TRANSMISSION view</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createChassisView')">Mount CHASSIS view</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createDeviceView')">Mount DEVICE view</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createEngineBuildView')">Mount ENGINE_BUILD</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createTransmissionBuildView')">Mount TRANSMISSION_BUILD</button>
+                        <button class="quick-query-btn accent" onclick="setNamedQuery('createChassisBuildView')">Mount CHASSIS_BUILD</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('createVehicleView')">Mount VEHICLE view</button>
                     </div>
 
                     <div class="use-case-label">2. Parts &amp; VIN pulls (Execute Query)</div>
                     <div class="quick-queries">
-                        <button class="quick-query-btn" onclick="setNamedQuery('engineById')">Engine ENG001</button>
-                        <button class="quick-query-btn" onclick="setNamedQuery('transmissionById')">Transmission TRN002</button>
-                        <button class="quick-query-btn" onclick="setNamedQuery('chassisById')">Chassis CHS003</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('engineById')">Engine type ENG001</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('deviceById')">Device DEV001</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('engineBuildById')">Engine build EB-…00001</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('transmissionById')">Transmission type TRN002</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('chassisById')">Chassis type CHS003</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('vehicleByVin')">Vehicle by VIN</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('listVehicles')">Lot inventory</button>
-                        <button class="quick-query-btn" onclick="setNamedQuery('vehiclesByEngine')">Builds using ENG001</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('vehiclesByEngine')">VINs using type ENG001</button>
                     </div>
 
                     <div class="use-case-label">3. Full build sheets (JOINs)</div>
                     <div class="quick-queries">
                         <button class="quick-query-btn accent" onclick="setNamedQuery('completeVehicleOne')">Build sheet — one VIN</button>
                         <button class="quick-query-btn accent" onclick="setNamedQuery('completeVehicleAll')">Build sheet — all vehicles</button>
+                        <button class="quick-query-btn" onclick="setNamedQuery('vinsByDevice')">VINs using device DEV008</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('highHorsepower')">High horsepower (300+)</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('awdVehicles')">AWD vehicles</button>
                         <button class="quick-query-btn" onclick="setNamedQuery('countByMake')">Count by make</button>
@@ -659,38 +668,101 @@
   "specs"."curb_weight_lb" VARCHAR,
   "specs"."doors" VARCHAR
 )`,
+            createDeviceView: `CREATE VIEW IF NOT EXISTS "DEVICE" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "specs"."name" VARCHAR,
+  "specs"."device_type" VARCHAR,
+  "specs"."manufacturer" VARCHAR,
+  "specs"."model" VARCHAR,
+  "specs"."plant_code" VARCHAR,
+  "specs"."status" VARCHAR
+)`,
+            createEngineBuildView: `CREATE VIEW IF NOT EXISTS "ENGINE_BUILD" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "ids"."engine_type_id" VARCHAR,
+  "ids"."device_id" VARCHAR,
+  "production"."build_date" VARCHAR,
+  "production"."plant_code" VARCHAR,
+  "production"."line_id" VARCHAR,
+  "production"."shift" VARCHAR,
+  "production"."batch_number" VARCHAR,
+  "production"."serial_number" VARCHAR,
+  "production"."qc_status" VARCHAR,
+  "production"."operator_id" VARCHAR
+)`,
+            createTransmissionBuildView: `CREATE VIEW IF NOT EXISTS "TRANSMISSION_BUILD" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "ids"."transmission_type_id" VARCHAR,
+  "ids"."device_id" VARCHAR,
+  "production"."build_date" VARCHAR,
+  "production"."plant_code" VARCHAR,
+  "production"."line_id" VARCHAR,
+  "production"."shift" VARCHAR,
+  "production"."batch_number" VARCHAR,
+  "production"."serial_number" VARCHAR,
+  "production"."qc_status" VARCHAR,
+  "production"."operator_id" VARCHAR
+)`,
+            createChassisBuildView: `CREATE VIEW IF NOT EXISTS "CHASSIS_BUILD" (
+  "rowkey" VARCHAR PRIMARY KEY,
+  "ids"."chassis_type_id" VARCHAR,
+  "ids"."device_id" VARCHAR,
+  "production"."build_date" VARCHAR,
+  "production"."plant_code" VARCHAR,
+  "production"."line_id" VARCHAR,
+  "production"."shift" VARCHAR,
+  "production"."batch_number" VARCHAR,
+  "production"."serial_number" VARCHAR,
+  "production"."qc_status" VARCHAR,
+  "production"."operator_id" VARCHAR
+)`,
             createVehicleView: `CREATE VIEW IF NOT EXISTS "VEHICLE" (
   "rowkey" VARCHAR PRIMARY KEY,
-  "ids"."engine_id" VARCHAR,
-  "ids"."transmission_id" VARCHAR,
-  "ids"."chassis_id" VARCHAR,
+  "ids"."engine_build_id" VARCHAR,
+  "ids"."transmission_build_id" VARCHAR,
+  "ids"."chassis_build_id" VARCHAR,
   "info"."make" VARCHAR,
   "info"."model" VARCHAR,
   "info"."year" VARCHAR,
   "info"."color" VARCHAR,
   "info"."trim" VARCHAR
 )`,
-            engineById: `SELECT "rowkey" as engine_id, "specs"."manufacturer", "specs"."model", "specs"."horsepower", "specs"."fuel_type"
+            engineById: `SELECT "rowkey" as engine_type_id, "specs"."manufacturer", "specs"."model", "specs"."horsepower", "specs"."fuel_type"
 FROM "ENGINE"
 WHERE "rowkey" = 'ENG001'`,
-            transmissionById: `SELECT "rowkey" as transmission_id, "specs"."manufacturer", "specs"."model", "specs"."type", "specs"."drive_type"
+            deviceById: `SELECT "rowkey" as device_id, "specs"."name", "specs"."device_type",
+       "specs"."manufacturer", "specs"."model", "specs"."plant_code", "specs"."status"
+FROM "DEVICE"
+WHERE "rowkey" = 'DEV001'`,
+            engineBuildById: `SELECT eb."rowkey" as engine_build_id, eb."ids"."engine_type_id", eb."ids"."device_id",
+       eb."production"."build_date", eb."production"."plant_code",
+       eb."production"."serial_number", eb."production"."qc_status",
+       e."specs"."manufacturer", e."specs"."model", e."specs"."horsepower",
+       d."specs"."name" as device_name, d."specs"."device_type"
+FROM "ENGINE_BUILD" eb
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
+JOIN "DEVICE" d ON eb."ids"."device_id" = d."rowkey"
+WHERE eb."rowkey" = 'EB-ENG001-00001'`,
+            transmissionById: `SELECT "rowkey" as transmission_type_id, "specs"."manufacturer", "specs"."model", "specs"."type", "specs"."drive_type"
 FROM "TRANSMISSION"
 WHERE "rowkey" = 'TRN002'`,
-            chassisById: `SELECT "rowkey" as chassis_id, "specs"."body_style", "specs"."material", "specs"."doors", "specs"."curb_weight_lb"
+            chassisById: `SELECT "rowkey" as chassis_type_id, "specs"."body_style", "specs"."material", "specs"."doors", "specs"."curb_weight_lb"
 FROM "CHASSIS"
 WHERE "rowkey" = 'CHS003'`,
             vehicleByVin: `SELECT "rowkey" as vin, "info"."make", "info"."model", "info"."year", "info"."color", "info"."trim",
-       "ids"."engine_id", "ids"."transmission_id", "ids"."chassis_id"
+       "ids"."engine_build_id", "ids"."transmission_build_id", "ids"."chassis_build_id"
 FROM "VEHICLE"
 WHERE "rowkey" = '1HGCM82633A004352'`,
             listVehicles: `SELECT "rowkey" as vin, "info"."make", "info"."model", "info"."year",
-       "ids"."engine_id", "ids"."transmission_id", "ids"."chassis_id"
+       "ids"."engine_build_id", "ids"."transmission_build_id", "ids"."chassis_build_id"
 FROM "VEHICLE"
 ORDER BY "info"."make", "info"."model"`,
-            vehiclesByEngine: `SELECT "rowkey" as vin, "info"."make", "info"."model", "info"."year", "ids"."engine_id"
-FROM "VEHICLE"
-WHERE "ids"."engine_id" = 'ENG001'
-ORDER BY "rowkey"`,
+            vehiclesByEngine: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", v."info"."year",
+       eb."rowkey" as engine_build_id, eb."ids"."engine_type_id"
+FROM "VEHICLE" v
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+WHERE eb."ids"."engine_type_id" = 'ENG001'
+ORDER BY v."rowkey"`,
             completeVehicleOne: `SELECT
   v."rowkey" as vin,
   v."info"."make" as make,
@@ -698,29 +770,58 @@ ORDER BY "rowkey"`,
   v."info"."year" as year,
   v."info"."color" as color,
   v."info"."trim" as trim,
-  v."ids"."engine_id" as engine_id,
-  v."ids"."transmission_id" as transmission_id,
-  v."ids"."chassis_id" as chassis_id,
+  eb."rowkey" as engine_build_id,
+  eb."ids"."engine_type_id" as engine_type_id,
+  eb."ids"."device_id" as engine_device_id,
+  eb."production"."build_date" as engine_build_date,
+  eb."production"."plant_code" as engine_plant,
+  eb."production"."serial_number" as engine_serial,
+  eb."production"."qc_status" as engine_qc,
   e."specs"."manufacturer" as engine_mfr,
   e."specs"."model" as engine_model,
   e."specs"."displacement_l" as displacement_l,
   e."specs"."cylinders" as cylinders,
   e."specs"."horsepower" as horsepower,
   e."specs"."fuel_type" as fuel_type,
+  ed."specs"."name" as engine_device_name,
+  ed."specs"."device_type" as engine_device_type,
+  ed."specs"."model" as engine_device_model,
+  tb."rowkey" as transmission_build_id,
+  tb."ids"."transmission_type_id" as transmission_type_id,
+  tb."ids"."device_id" as transmission_device_id,
+  tb."production"."plant_code" as transmission_plant,
+  tb."production"."serial_number" as transmission_serial,
+  tb."production"."qc_status" as transmission_qc,
   t."specs"."manufacturer" as transmission_mfr,
   t."specs"."model" as transmission_model,
   t."specs"."type" as transmission_type,
   t."specs"."gears" as gears,
   t."specs"."drive_type" as drive_type,
+  td."specs"."name" as transmission_device_name,
+  td."specs"."device_type" as transmission_device_type,
+  cb."rowkey" as chassis_build_id,
+  cb."ids"."chassis_type_id" as chassis_type_id,
+  cb."ids"."device_id" as chassis_device_id,
+  cb."production"."plant_code" as chassis_plant,
+  cb."production"."serial_number" as chassis_serial,
+  cb."production"."qc_status" as chassis_qc,
   c."specs"."body_style" as body_style,
   c."specs"."material" as material,
   c."specs"."wheelbase_in" as wheelbase_in,
   c."specs"."curb_weight_lb" as curb_weight_lb,
-  c."specs"."doors" as doors
+  c."specs"."doors" as doors,
+  cd."specs"."name" as chassis_device_name,
+  cd."specs"."device_type" as chassis_device_type
 FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
+JOIN "DEVICE" ed ON eb."ids"."device_id" = ed."rowkey"
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
+JOIN "DEVICE" td ON tb."ids"."device_id" = td."rowkey"
+JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
+JOIN "CHASSIS" c ON cb."ids"."chassis_type_id" = c."rowkey"
+JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
 WHERE v."rowkey" = '1HGCM82633A004352'`,
             completeVehicleAll: `SELECT
   v."rowkey" as vin,
@@ -729,39 +830,112 @@ WHERE v."rowkey" = '1HGCM82633A004352'`,
   v."info"."year" as year,
   v."info"."color" as color,
   v."info"."trim" as trim,
-  v."ids"."engine_id" as engine_id,
-  v."ids"."transmission_id" as transmission_id,
-  v."ids"."chassis_id" as chassis_id,
+  eb."rowkey" as engine_build_id,
+  eb."ids"."engine_type_id" as engine_type_id,
+  eb."ids"."device_id" as engine_device_id,
+  eb."production"."plant_code" as engine_plant,
+  eb."production"."serial_number" as engine_serial,
+  eb."production"."qc_status" as engine_qc,
   e."specs"."manufacturer" as engine_mfr,
   e."specs"."model" as engine_model,
   e."specs"."displacement_l" as displacement_l,
   e."specs"."cylinders" as cylinders,
   e."specs"."horsepower" as horsepower,
   e."specs"."fuel_type" as fuel_type,
+  ed."specs"."name" as engine_device_name,
+  ed."specs"."device_type" as engine_device_type,
+  tb."rowkey" as transmission_build_id,
+  tb."ids"."transmission_type_id" as transmission_type_id,
+  tb."ids"."device_id" as transmission_device_id,
+  tb."production"."plant_code" as transmission_plant,
+  tb."production"."serial_number" as transmission_serial,
   t."specs"."manufacturer" as transmission_mfr,
   t."specs"."model" as transmission_model,
   t."specs"."type" as transmission_type,
   t."specs"."gears" as gears,
   t."specs"."drive_type" as drive_type,
+  td."specs"."name" as transmission_device_name,
+  td."specs"."device_type" as transmission_device_type,
+  cb."rowkey" as chassis_build_id,
+  cb."ids"."chassis_type_id" as chassis_type_id,
+  cb."ids"."device_id" as chassis_device_id,
+  cb."production"."plant_code" as chassis_plant,
+  cb."production"."serial_number" as chassis_serial,
   c."specs"."body_style" as body_style,
   c."specs"."material" as material,
   c."specs"."wheelbase_in" as wheelbase_in,
   c."specs"."curb_weight_lb" as curb_weight_lb,
-  c."specs"."doors" as doors
+  c."specs"."doors" as doors,
+  cd."specs"."name" as chassis_device_name,
+  cd."specs"."device_type" as chassis_device_type
 FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
+JOIN "DEVICE" ed ON eb."ids"."device_id" = ed."rowkey"
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
+JOIN "DEVICE" td ON tb."ids"."device_id" = td."rowkey"
+JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
+JOIN "CHASSIS" c ON cb."ids"."chassis_type_id" = c."rowkey"
+JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
 ORDER BY v."info"."make", v."info"."model"`,
-            highHorsepower: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", v."info"."year",
-       e."specs"."horsepower", e."specs"."fuel_type"
+            vinsByDevice: `SELECT
+  v."rowkey" as vin,
+  v."info"."make" as make,
+  v."info"."model" as model,
+  v."info"."year" as year,
+  'ENGINE' as build_role,
+  eb."rowkey" as build_id,
+  eb."ids"."device_id" as device_id,
+  d."specs"."name" as device_name,
+  d."specs"."device_type" as device_type
 FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "DEVICE" d ON eb."ids"."device_id" = d."rowkey"
+WHERE eb."ids"."device_id" = 'DEV008'
+UNION ALL
+SELECT
+  v."rowkey" as vin,
+  v."info"."make" as make,
+  v."info"."model" as model,
+  v."info"."year" as year,
+  'TRANSMISSION' as build_role,
+  tb."rowkey" as build_id,
+  tb."ids"."device_id" as device_id,
+  d."specs"."name" as device_name,
+  d."specs"."device_type" as device_type
+FROM "VEHICLE" v
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "DEVICE" d ON tb."ids"."device_id" = d."rowkey"
+WHERE tb."ids"."device_id" = 'DEV008'
+UNION ALL
+SELECT
+  v."rowkey" as vin,
+  v."info"."make" as make,
+  v."info"."model" as model,
+  v."info"."year" as year,
+  'CHASSIS' as build_role,
+  cb."rowkey" as build_id,
+  cb."ids"."device_id" as device_id,
+  d."specs"."name" as device_name,
+  d."specs"."device_type" as device_type
+FROM "VEHICLE" v
+JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
+JOIN "DEVICE" d ON cb."ids"."device_id" = d."rowkey"
+WHERE cb."ids"."device_id" = 'DEV008'
+ORDER BY vin, build_role`,
+            highHorsepower: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", v."info"."year",
+       e."specs"."horsepower", e."specs"."fuel_type", eb."rowkey" as engine_build_id
+FROM "VEHICLE" v
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
 WHERE TO_NUMBER(e."specs"."horsepower") >= 300
 ORDER BY TO_NUMBER(e."specs"."horsepower") DESC`,
-            awdVehicles: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", t."specs"."type", t."specs"."drive_type"
+            awdVehicles: `SELECT v."rowkey" as vin, v."info"."make", v."info"."model", t."specs"."type", t."specs"."drive_type",
+       tb."rowkey" as transmission_build_id
 FROM "VEHICLE" v
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
 WHERE t."specs"."drive_type" = 'AWD'
 ORDER BY v."info"."make"`,
             countByMake: `SELECT "info"."make", COUNT(*) as vehicle_count
@@ -842,9 +1016,12 @@ ORDER BY "info"."make"`,
                 const year = fieldValue(row, columns, ['year']);
                 const color = fieldValue(row, columns, ['color']);
                 const trim = fieldValue(row, columns, ['trim']);
-                const engineId = fieldValue(row, columns, ['engine_id']);
-                const transmissionId = fieldValue(row, columns, ['transmission_id']);
-                const chassisId = fieldValue(row, columns, ['chassis_id']);
+                const engineBuildId = fieldValue(row, columns, ['engine_build_id']);
+                const transmissionBuildId = fieldValue(row, columns, ['transmission_build_id']);
+                const chassisBuildId = fieldValue(row, columns, ['chassis_build_id']);
+                const engineTypeId = fieldValue(row, columns, ['engine_type_id', 'engine_id']);
+                const transmissionTypeId = fieldValue(row, columns, ['transmission_type_id', 'transmission_id']);
+                const chassisTypeId = fieldValue(row, columns, ['chassis_type_id', 'chassis_id']);
 
                 const engineMfr = fieldValue(row, columns, ['engine_mfr']);
                 const engineModel = fieldValue(row, columns, ['engine_model']);
@@ -852,24 +1029,40 @@ ORDER BY "info"."make"`,
                 const cylinders = fieldValue(row, columns, ['cylinders']);
                 const hp = fieldValue(row, columns, ['horsepower']);
                 const fuel = fieldValue(row, columns, ['fuel_type']);
+                const enginePlant = fieldValue(row, columns, ['engine_plant']);
+                const engineSerial = fieldValue(row, columns, ['engine_serial']);
+                const engineQc = fieldValue(row, columns, ['engine_qc']);
+                const engineDeviceId = fieldValue(row, columns, ['engine_device_id']);
+                const engineDeviceName = fieldValue(row, columns, ['engine_device_name', 'device_name']);
+                const engineDeviceType = fieldValue(row, columns, ['engine_device_type', 'device_type']);
 
                 const transMfr = fieldValue(row, columns, ['transmission_mfr']);
                 const transModel = fieldValue(row, columns, ['transmission_model']);
                 const transType = fieldValue(row, columns, ['transmission_type', 'type']);
                 const gears = fieldValue(row, columns, ['gears']);
                 const drive = fieldValue(row, columns, ['drive_type']);
+                const transPlant = fieldValue(row, columns, ['transmission_plant']);
+                const transSerial = fieldValue(row, columns, ['transmission_serial']);
+                const transDeviceId = fieldValue(row, columns, ['transmission_device_id']);
+                const transDeviceName = fieldValue(row, columns, ['transmission_device_name']);
+                const transDeviceType = fieldValue(row, columns, ['transmission_device_type']);
 
                 const body = fieldValue(row, columns, ['body_style']);
                 const material = fieldValue(row, columns, ['material']);
                 const wheelbase = fieldValue(row, columns, ['wheelbase_in']);
                 const weight = fieldValue(row, columns, ['curb_weight_lb']);
                 const doors = fieldValue(row, columns, ['doors']);
+                const chassisPlant = fieldValue(row, columns, ['chassis_plant']);
+                const chassisSerial = fieldValue(row, columns, ['chassis_serial']);
+                const chassisDeviceId = fieldValue(row, columns, ['chassis_device_id']);
+                const chassisDeviceName = fieldValue(row, columns, ['chassis_device_name']);
+                const chassisDeviceType = fieldValue(row, columns, ['chassis_device_type']);
 
                 const titleBits = joinBits([make, model, year, color, trim]);
                 const idBits = joinBits([
-                    engineId ? `ENG ${engineId}` : '',
-                    transmissionId ? `TRN ${transmissionId}` : '',
-                    chassisId ? `CHS ${chassisId}` : ''
+                    engineBuildId || engineTypeId ? `ENG ${engineBuildId || engineTypeId}` : '',
+                    transmissionBuildId || transmissionTypeId ? `TRN ${transmissionBuildId || transmissionTypeId}` : '',
+                    chassisBuildId || chassisTypeId ? `CHS ${chassisBuildId || chassisTypeId}` : ''
                 ]);
                 const engineBits = joinBits([
                     engineMfr,
@@ -877,21 +1070,31 @@ ORDER BY "info"."make"`,
                     displacement ? `${displacement}L` : '',
                     cylinders ? `${cylinders} cyl` : '',
                     hp ? `${hp} HP` : '',
-                    fuel
+                    fuel,
+                    enginePlant,
+                    engineSerial ? `S/N ${engineSerial}` : '',
+                    engineQc,
+                    engineDeviceId || engineDeviceName ? `DEV ${joinBits([engineDeviceId, engineDeviceName, engineDeviceType])}` : ''
                 ]);
                 const transBits = joinBits([
                     transMfr,
                     transModel,
                     transType,
                     gears ? `${gears} gears` : '',
-                    drive
+                    drive,
+                    transPlant,
+                    transSerial ? `S/N ${transSerial}` : '',
+                    transDeviceId || transDeviceName ? `DEV ${joinBits([transDeviceId, transDeviceName, transDeviceType])}` : ''
                 ]);
                 const chassisBits = joinBits([
                     body,
                     material,
                     wheelbase ? `${wheelbase} in WB` : '',
                     weight ? `${weight} lb` : '',
-                    doors ? `${doors} doors` : ''
+                    doors ? `${doors} doors` : '',
+                    chassisPlant,
+                    chassisSerial ? `S/N ${chassisSerial}` : '',
+                    chassisDeviceId || chassisDeviceName ? `DEV ${joinBits([chassisDeviceId, chassisDeviceName, chassisDeviceType])}` : ''
                 ]);
 
                 html += '<div class="build-sheet">';

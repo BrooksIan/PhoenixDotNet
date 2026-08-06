@@ -143,15 +143,40 @@ list_namespace_tables 'vehicle360'
 scan 'vehicle360:VEHICLE', {LIMIT => 2}
 ```
 
-## Example 9: Complete vehicle view via API
+## Example 9: Complete build sheet via API
 
-After views are created, query the JOIN-based complete vehicle view:
+After views are created, query VIN → builds → types / devices.
+
+Join path (see also [`README.md`](README.md) architecture diagrams):
+
+```mermaid
+flowchart LR
+  VEH["VEHICLE<br/>rowkey = VIN"]
+  EB[ENGINE_BUILD]
+  TB[TRANSMISSION_BUILD]
+  CB[CHASSIS_BUILD]
+  ENG[ENGINE]
+  TRN[TRANSMISSION]
+  CHS[CHASSIS]
+  ED["DEVICE engine"]
+  TD["DEVICE transmission"]
+  CD["DEVICE chassis"]
+  VEH -->|"ids.engine_build_id"| EB
+  VEH -->|"ids.transmission_build_id"| TB
+  VEH -->|"ids.chassis_build_id"| CB
+  EB -->|"ids.engine_type_id"| ENG
+  TB -->|"ids.transmission_type_id"| TRN
+  CB -->|"ids.chassis_type_id"| CHS
+  EB -->|"ids.device_id"| ED
+  TB -->|"ids.device_id"| TD
+  CB -->|"ids.device_id"| CD
+```
 
 ```bash
 curl -X POST https://phoenix-api.example.com/api/phoenix/query \
   -H "Content-Type: application/json" \
   -d '{
-    "sql": "SELECT v.\"rowkey\" as vin, v.\"info\".\"make\", v.\"info\".\"model\", v.\"info\".\"year\", e.\"specs\".\"horsepower\", t.\"specs\".\"type\", t.\"specs\".\"drive_type\", c.\"specs\".\"body_style\" FROM \"VEHICLE\" v JOIN \"ENGINE\" e ON v.\"ids\".\"engine_id\" = e.\"rowkey\" JOIN \"TRANSMISSION\" t ON v.\"ids\".\"transmission_id\" = t.\"rowkey\" JOIN \"CHASSIS\" c ON v.\"ids\".\"chassis_id\" = c.\"rowkey\" WHERE v.\"rowkey\" = '\''1HGCM82633A004352'\''"
+    "sql": "SELECT v.\"rowkey\" as vin, v.\"info\".\"make\", v.\"info\".\"model\", ed.\"specs\".\"name\" as engine_device_name, td.\"specs\".\"name\" as transmission_device_name, cd.\"specs\".\"name\" as chassis_device_name FROM \"VEHICLE\" v JOIN \"ENGINE_BUILD\" eb ON v.\"ids\".\"engine_build_id\" = eb.\"rowkey\" JOIN \"DEVICE\" ed ON eb.\"ids\".\"device_id\" = ed.\"rowkey\" JOIN \"TRANSMISSION_BUILD\" tb ON v.\"ids\".\"transmission_build_id\" = tb.\"rowkey\" JOIN \"DEVICE\" td ON tb.\"ids\".\"device_id\" = td.\"rowkey\" JOIN \"CHASSIS_BUILD\" cb ON v.\"ids\".\"chassis_build_id\" = cb.\"rowkey\" JOIN \"DEVICE\" cd ON cb.\"ids\".\"device_id\" = cd.\"rowkey\" WHERE v.\"rowkey\" = '\''1HGCM82633A004352'\''"
   }'
 ```
 

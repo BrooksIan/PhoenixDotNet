@@ -1,16 +1,18 @@
 -- Sample Phoenix SQL Queries for Vehicle 360 Use Case
--- Tables: ENGINE, TRANSMISSION, CHASSIS, VEHICLE (HBase-native)
--- Pattern: Normalized component catalogs + VIN assembly with JOINs
+-- Type catalogs: ENGINE, TRANSMISSION, CHASSIS
+-- Devices:       DEVICE (shared manufacturing equipment)
+-- Build tables:  ENGINE_BUILD, TRANSMISSION_BUILD, CHASSIS_BUILD
+-- Assembly:      VEHICLE (VIN → *_build_id)
+--
+-- Pattern: DEVICE → build → type catalog; VIN assembly JOINs through builds
 --
 -- Prerequisite: HBase tables must already exist and contain data.
--- Run the CREATE VIEW statements below before the SELECT queries so
--- Phoenix can map SQL column families/qualifiers onto the HBase tables.
+-- Run the CREATE VIEW statements below before the SELECT queries.
 
 -- ============================================================
--- CREATE PHOENIX VIEWS (required when tables exist only in HBase)
+-- CREATE PHOENIX VIEWS
 -- ============================================================
 
--- View 1: ENGINE (row key = engine ID)
 CREATE VIEW IF NOT EXISTS "ENGINE" (
     "rowkey" VARCHAR PRIMARY KEY,
     "specs"."manufacturer" VARCHAR,
@@ -21,7 +23,6 @@ CREATE VIEW IF NOT EXISTS "ENGINE" (
     "specs"."fuel_type" VARCHAR
 );
 
--- View 2: TRANSMISSION (row key = transmission ID)
 CREATE VIEW IF NOT EXISTS "TRANSMISSION" (
     "rowkey" VARCHAR PRIMARY KEY,
     "specs"."manufacturer" VARCHAR,
@@ -31,7 +32,6 @@ CREATE VIEW IF NOT EXISTS "TRANSMISSION" (
     "specs"."drive_type" VARCHAR
 );
 
--- View 3: CHASSIS (row key = chassis ID)
 CREATE VIEW IF NOT EXISTS "CHASSIS" (
     "rowkey" VARCHAR PRIMARY KEY,
     "specs"."body_style" VARCHAR,
@@ -41,12 +41,63 @@ CREATE VIEW IF NOT EXISTS "CHASSIS" (
     "specs"."doors" VARCHAR
 );
 
--- View 4: VEHICLE (row key = VIN; ids.* reference component tables)
+CREATE VIEW IF NOT EXISTS "DEVICE" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "specs"."name" VARCHAR,
+    "specs"."device_type" VARCHAR,
+    "specs"."manufacturer" VARCHAR,
+    "specs"."model" VARCHAR,
+    "specs"."plant_code" VARCHAR,
+    "specs"."status" VARCHAR
+);
+
+CREATE VIEW IF NOT EXISTS "ENGINE_BUILD" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "ids"."engine_type_id" VARCHAR,
+    "ids"."device_id" VARCHAR,
+    "production"."build_date" VARCHAR,
+    "production"."plant_code" VARCHAR,
+    "production"."line_id" VARCHAR,
+    "production"."shift" VARCHAR,
+    "production"."batch_number" VARCHAR,
+    "production"."serial_number" VARCHAR,
+    "production"."qc_status" VARCHAR,
+    "production"."operator_id" VARCHAR
+);
+
+CREATE VIEW IF NOT EXISTS "TRANSMISSION_BUILD" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "ids"."transmission_type_id" VARCHAR,
+    "ids"."device_id" VARCHAR,
+    "production"."build_date" VARCHAR,
+    "production"."plant_code" VARCHAR,
+    "production"."line_id" VARCHAR,
+    "production"."shift" VARCHAR,
+    "production"."batch_number" VARCHAR,
+    "production"."serial_number" VARCHAR,
+    "production"."qc_status" VARCHAR,
+    "production"."operator_id" VARCHAR
+);
+
+CREATE VIEW IF NOT EXISTS "CHASSIS_BUILD" (
+    "rowkey" VARCHAR PRIMARY KEY,
+    "ids"."chassis_type_id" VARCHAR,
+    "ids"."device_id" VARCHAR,
+    "production"."build_date" VARCHAR,
+    "production"."plant_code" VARCHAR,
+    "production"."line_id" VARCHAR,
+    "production"."shift" VARCHAR,
+    "production"."batch_number" VARCHAR,
+    "production"."serial_number" VARCHAR,
+    "production"."qc_status" VARCHAR,
+    "production"."operator_id" VARCHAR
+);
+
 CREATE VIEW IF NOT EXISTS "VEHICLE" (
     "rowkey" VARCHAR PRIMARY KEY,
-    "ids"."engine_id" VARCHAR,
-    "ids"."transmission_id" VARCHAR,
-    "ids"."chassis_id" VARCHAR,
+    "ids"."engine_build_id" VARCHAR,
+    "ids"."transmission_build_id" VARCHAR,
+    "ids"."chassis_build_id" VARCHAR,
     "info"."make" VARCHAR,
     "info"."model" VARCHAR,
     "info"."year" VARCHAR,
@@ -54,66 +105,117 @@ CREATE VIEW IF NOT EXISTS "VEHICLE" (
     "info"."trim" VARCHAR
 );
 
--- Optional: drop and recreate views if the schema changes
+-- Optional: drop views if schema changes
+-- DROP VIEW IF EXISTS "VEHICLE";
+-- DROP VIEW IF EXISTS "ENGINE_BUILD";
+-- DROP VIEW IF EXISTS "TRANSMISSION_BUILD";
+-- DROP VIEW IF EXISTS "CHASSIS_BUILD";
 -- DROP VIEW IF EXISTS "ENGINE";
 -- DROP VIEW IF EXISTS "TRANSMISSION";
 -- DROP VIEW IF EXISTS "CHASSIS";
--- DROP VIEW IF EXISTS "VEHICLE";
+-- DROP VIEW IF EXISTS "DEVICE";
 
 -- ============================================================
--- BASIC COMPONENT LOOKUPS
+-- TYPE CATALOG LOOKUPS
 -- ============================================================
 
--- Query 1: Get engine by ID
 SELECT *
 FROM "ENGINE"
 WHERE "rowkey" = 'ENG001';
 
--- Query 2: Get transmission by ID
 SELECT *
 FROM "TRANSMISSION"
 WHERE "rowkey" = 'TRN002';
 
--- Query 3: Get chassis by ID
 SELECT *
 FROM "CHASSIS"
 WHERE "rowkey" = 'CHS003';
 
--- Query 4: List all engines
+-- ============================================================
+-- DEVICE LOOKUPS
+-- ============================================================
+
 SELECT
-    "rowkey" as engine_id,
+    "rowkey" as device_id,
+    "specs"."name",
+    "specs"."device_type",
     "specs"."manufacturer",
     "specs"."model",
-    "specs"."horsepower",
-    "specs"."fuel_type"
-FROM "ENGINE"
-ORDER BY "rowkey";
+    "specs"."plant_code",
+    "specs"."status"
+FROM "DEVICE"
+WHERE "rowkey" = 'DEV001';
 
--- Query 5: List all transmissions
 SELECT
-    "rowkey" as transmission_id,
-    "specs"."manufacturer",
-    "specs"."model",
-    "specs"."type",
-    "specs"."drive_type"
-FROM "TRANSMISSION"
-ORDER BY "rowkey";
-
--- Query 6: List all chassis
-SELECT
-    "rowkey" as chassis_id,
-    "specs"."body_style",
-    "specs"."material",
-    "specs"."doors",
-    "specs"."curb_weight_lb"
-FROM "CHASSIS"
+    "rowkey" as device_id,
+    "specs"."name",
+    "specs"."device_type",
+    "specs"."plant_code",
+    "specs"."status"
+FROM "DEVICE"
+WHERE "specs"."plant_code" = 'MARYSVILLE'
 ORDER BY "rowkey";
 
 -- ============================================================
--- VEHICLE LOOKUPS (IDs + INFO ONLY)
+-- BUILD LOOKUPS (physical unit + production metadata)
 -- ============================================================
 
--- Query 7: Get vehicle by VIN
+SELECT
+    "rowkey" as engine_build_id,
+    "ids"."engine_type_id",
+    "ids"."device_id",
+    "production"."build_date",
+    "production"."plant_code",
+    "production"."line_id",
+    "production"."shift",
+    "production"."batch_number",
+    "production"."serial_number",
+    "production"."qc_status",
+    "production"."operator_id"
+FROM "ENGINE_BUILD"
+WHERE "rowkey" = 'EB-ENG001-00001';
+
+SELECT
+    eb."rowkey" as engine_build_id,
+    eb."ids"."engine_type_id",
+    eb."ids"."device_id",
+    eb."production"."build_date",
+    eb."production"."plant_code",
+    eb."production"."qc_status",
+    e."specs"."manufacturer",
+    e."specs"."model",
+    e."specs"."horsepower",
+    d."specs"."name" as device_name,
+    d."specs"."device_type"
+FROM "ENGINE_BUILD" eb
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
+JOIN "DEVICE" d ON eb."ids"."device_id" = d."rowkey"
+WHERE eb."rowkey" = 'EB-ENG001-00001';
+
+SELECT
+    "rowkey" as transmission_build_id,
+    "ids"."transmission_type_id",
+    "production"."plant_code",
+    "production"."serial_number",
+    "production"."qc_status"
+FROM "TRANSMISSION_BUILD"
+WHERE "ids"."transmission_type_id" = 'TRN001'
+ORDER BY "rowkey";
+
+SELECT
+    "rowkey" as chassis_build_id,
+    "ids"."chassis_type_id",
+    "production"."plant_code",
+    "production"."batch_number",
+    "production"."qc_status"
+FROM "CHASSIS_BUILD"
+WHERE "ids"."chassis_type_id" = 'CHS001'
+ORDER BY "rowkey";
+
+-- ============================================================
+-- VEHICLE LOOKUPS
+-- ============================================================
+
 SELECT
     "rowkey" as vin,
     "info"."make",
@@ -121,52 +223,27 @@ SELECT
     "info"."year",
     "info"."color",
     "info"."trim",
-    "ids"."engine_id",
-    "ids"."transmission_id",
-    "ids"."chassis_id"
+    "ids"."engine_build_id",
+    "ids"."transmission_build_id",
+    "ids"."chassis_build_id"
 FROM "VEHICLE"
 WHERE "rowkey" = '1HGCM82633A004352';
 
--- Query 8: List all vehicles
 SELECT
     "rowkey" as vin,
     "info"."make",
     "info"."model",
     "info"."year",
-    "info"."color",
-    "ids"."engine_id",
-    "ids"."transmission_id",
-    "ids"."chassis_id"
+    "ids"."engine_build_id",
+    "ids"."transmission_build_id",
+    "ids"."chassis_build_id"
 FROM "VEHICLE"
 ORDER BY "info"."make", "info"."model";
 
--- Query 9: Vehicles by make
-SELECT
-    "rowkey" as vin,
-    "info"."make",
-    "info"."model",
-    "info"."year",
-    "info"."trim"
-FROM "VEHICLE"
-WHERE "info"."make" = 'Honda'
-ORDER BY "info"."year" DESC;
-
--- Query 10: Vehicles by year
-SELECT
-    "rowkey" as vin,
-    "info"."make",
-    "info"."model",
-    "info"."year",
-    "info"."color"
-FROM "VEHICLE"
-WHERE "info"."year" = '2024'
-ORDER BY "info"."make";
-
 -- ============================================================
--- FULL VEHICLE BUILD (JOINS) — complete vehicle view
+-- COMPLETE BUILD SHEET (VIN → builds → types)
 -- ============================================================
 
--- Query 11: Complete vehicle view for one VIN (all table fields)
 SELECT
     v."rowkey" as vin,
     v."info"."make" as make,
@@ -174,226 +251,231 @@ SELECT
     v."info"."year" as year,
     v."info"."color" as color,
     v."info"."trim" as trim,
-    v."ids"."engine_id" as engine_id,
-    v."ids"."transmission_id" as transmission_id,
-    v."ids"."chassis_id" as chassis_id,
+    eb."rowkey" as engine_build_id,
+    eb."ids"."engine_type_id" as engine_type_id,
+    eb."ids"."device_id" as engine_device_id,
+    eb."production"."build_date" as engine_build_date,
+    eb."production"."plant_code" as engine_plant,
+    eb."production"."line_id" as engine_line,
+    eb."production"."shift" as engine_shift,
+    eb."production"."batch_number" as engine_batch,
+    eb."production"."serial_number" as engine_serial,
+    eb."production"."qc_status" as engine_qc,
+    eb."production"."operator_id" as engine_operator,
     e."specs"."manufacturer" as engine_mfr,
     e."specs"."model" as engine_model,
     e."specs"."displacement_l" as displacement_l,
     e."specs"."cylinders" as cylinders,
     e."specs"."horsepower" as horsepower,
     e."specs"."fuel_type" as fuel_type,
+    ed."specs"."name" as engine_device_name,
+    ed."specs"."device_type" as engine_device_type,
+    ed."specs"."model" as engine_device_model,
+    tb."rowkey" as transmission_build_id,
+    tb."ids"."transmission_type_id" as transmission_type_id,
+    tb."ids"."device_id" as transmission_device_id,
+    tb."production"."build_date" as transmission_build_date,
+    tb."production"."plant_code" as transmission_plant,
+    tb."production"."serial_number" as transmission_serial,
+    tb."production"."qc_status" as transmission_qc,
     t."specs"."manufacturer" as transmission_mfr,
     t."specs"."model" as transmission_model,
     t."specs"."type" as transmission_type,
     t."specs"."gears" as gears,
     t."specs"."drive_type" as drive_type,
+    td."specs"."name" as transmission_device_name,
+    td."specs"."device_type" as transmission_device_type,
+    cb."rowkey" as chassis_build_id,
+    cb."ids"."chassis_type_id" as chassis_type_id,
+    cb."ids"."device_id" as chassis_device_id,
+    cb."production"."build_date" as chassis_build_date,
+    cb."production"."plant_code" as chassis_plant,
+    cb."production"."serial_number" as chassis_serial,
+    cb."production"."qc_status" as chassis_qc,
     c."specs"."body_style" as body_style,
     c."specs"."material" as material,
     c."specs"."wheelbase_in" as wheelbase_in,
     c."specs"."curb_weight_lb" as curb_weight_lb,
-    c."specs"."doors" as doors
+    c."specs"."doors" as doors,
+    cd."specs"."name" as chassis_device_name,
+    cd."specs"."device_type" as chassis_device_type
 FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
+JOIN "DEVICE" ed ON eb."ids"."device_id" = ed."rowkey"
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
+JOIN "DEVICE" td ON tb."ids"."device_id" = td."rowkey"
+JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
+JOIN "CHASSIS" c ON cb."ids"."chassis_type_id" = c."rowkey"
+JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
 WHERE v."rowkey" = '1HGCM82633A004352';
 
--- Query 12: Complete vehicle view for all vehicles (all table fields)
 SELECT
     v."rowkey" as vin,
     v."info"."make" as make,
     v."info"."model" as model,
     v."info"."year" as year,
-    v."info"."color" as color,
-    v."info"."trim" as trim,
-    v."ids"."engine_id" as engine_id,
-    v."ids"."transmission_id" as transmission_id,
-    v."ids"."chassis_id" as chassis_id,
-    e."specs"."manufacturer" as engine_mfr,
-    e."specs"."model" as engine_model,
-    e."specs"."displacement_l" as displacement_l,
-    e."specs"."cylinders" as cylinders,
+    eb."rowkey" as engine_build_id,
     e."specs"."horsepower" as horsepower,
-    e."specs"."fuel_type" as fuel_type,
-    t."specs"."manufacturer" as transmission_mfr,
-    t."specs"."model" as transmission_model,
+    ed."specs"."name" as engine_device_name,
+    tb."rowkey" as transmission_build_id,
     t."specs"."type" as transmission_type,
-    t."specs"."gears" as gears,
     t."specs"."drive_type" as drive_type,
+    td."specs"."name" as transmission_device_name,
+    cb."rowkey" as chassis_build_id,
     c."specs"."body_style" as body_style,
-    c."specs"."material" as material,
-    c."specs"."wheelbase_in" as wheelbase_in,
-    c."specs"."curb_weight_lb" as curb_weight_lb,
-    c."specs"."doors" as doors
+    cd."specs"."name" as chassis_device_name
 FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
+JOIN "DEVICE" ed ON eb."ids"."device_id" = ed."rowkey"
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
+JOIN "DEVICE" td ON tb."ids"."device_id" = td."rowkey"
+JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
+JOIN "CHASSIS" c ON cb."ids"."chassis_type_id" = c."rowkey"
+JOIN "DEVICE" cd ON cb."ids"."device_id" = cd."rowkey"
 ORDER BY v."info"."make", v."info"."model";
 
--- Query 13: Full build for BMW M340i
+-- ============================================================
+-- TYPE REUSE VIA BUILDS
+-- ============================================================
+
 SELECT
     v."rowkey" as vin,
     v."info"."make",
     v."info"."model",
-    v."info"."trim",
-    e."specs"."model" as engine_model,
-    e."specs"."horsepower",
-    t."specs"."model" as transmission_model,
-    t."specs"."type",
-    c."specs"."body_style"
+    eb."rowkey" as engine_build_id,
+    eb."ids"."engine_type_id"
 FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
-WHERE v."rowkey" = 'WBA5U9C05LF345678';
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+WHERE eb."ids"."engine_type_id" = 'ENG001'
+ORDER BY v."rowkey";
 
 -- ============================================================
--- COMPONENT REUSE QUERIES
+-- DEVICE TRACEABILITY (VINs that used the same device)
+-- A device can appear on engine, transmission, and/or chassis builds.
+-- Example: DEV008 (East Liberty Body Fixture) → Civic + Accord chassis.
 -- ============================================================
 
--- Query 14: All vehicles using a given engine
 SELECT
-    "rowkey" as vin,
-    "info"."make",
-    "info"."model",
-    "info"."year",
-    "ids"."engine_id"
-FROM "VEHICLE"
-WHERE "ids"."engine_id" = 'ENG001'
-ORDER BY "rowkey";
+    v."rowkey" as vin,
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year,
+    'ENGINE' as build_role,
+    eb."rowkey" as build_id,
+    eb."ids"."device_id" as device_id,
+    d."specs"."name" as device_name,
+    d."specs"."device_type" as device_type,
+    d."specs"."plant_code" as device_plant
+FROM "VEHICLE" v
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "DEVICE" d ON eb."ids"."device_id" = d."rowkey"
+WHERE eb."ids"."device_id" = 'DEV008'
+UNION ALL
+SELECT
+    v."rowkey" as vin,
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year,
+    'TRANSMISSION' as build_role,
+    tb."rowkey" as build_id,
+    tb."ids"."device_id" as device_id,
+    d."specs"."name" as device_name,
+    d."specs"."device_type" as device_type,
+    d."specs"."plant_code" as device_plant
+FROM "VEHICLE" v
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "DEVICE" d ON tb."ids"."device_id" = d."rowkey"
+WHERE tb."ids"."device_id" = 'DEV008'
+UNION ALL
+SELECT
+    v."rowkey" as vin,
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year,
+    'CHASSIS' as build_role,
+    cb."rowkey" as build_id,
+    cb."ids"."device_id" as device_id,
+    d."specs"."name" as device_name,
+    d."specs"."device_type" as device_type,
+    d."specs"."plant_code" as device_plant
+FROM "VEHICLE" v
+JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
+JOIN "DEVICE" d ON cb."ids"."device_id" = d."rowkey"
+WHERE cb."ids"."device_id" = 'DEV008'
+ORDER BY vin, build_role;
 
--- Query 15: All vehicles using a given transmission
-SELECT
-    "rowkey" as vin,
-    "info"."make",
-    "info"."model",
-    "info"."year",
-    "ids"."transmission_id"
-FROM "VEHICLE"
-WHERE "ids"."transmission_id" = 'TRN002'
-ORDER BY "rowkey";
+-- Distinct VINs only for a device (any build role)
+SELECT DISTINCT
+    v."rowkey" as vin,
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year
+FROM "VEHICLE" v
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+WHERE eb."ids"."device_id" = 'DEV008'
+UNION
+SELECT DISTINCT
+    v."rowkey" as vin,
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year
+FROM "VEHICLE" v
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+WHERE tb."ids"."device_id" = 'DEV008'
+UNION
+SELECT DISTINCT
+    v."rowkey" as vin,
+    v."info"."make" as make,
+    v."info"."model" as model,
+    v."info"."year" as year
+FROM "VEHICLE" v
+JOIN "CHASSIS_BUILD" cb ON v."ids"."chassis_build_id" = cb."rowkey"
+WHERE cb."ids"."device_id" = 'DEV008'
+ORDER BY make, model;
 
--- Query 16: All vehicles using a given chassis
 SELECT
-    "rowkey" as vin,
-    "info"."make",
-    "info"."model",
-    "info"."year",
-    "ids"."chassis_id"
-FROM "VEHICLE"
-WHERE "ids"."chassis_id" = 'CHS002'
-ORDER BY "rowkey";
-
--- Query 17: Count vehicles per engine
-SELECT
-    "ids"."engine_id",
+    eb."ids"."engine_type_id",
     COUNT(*) as vehicle_count
-FROM "VEHICLE"
-GROUP BY "ids"."engine_id"
-ORDER BY "ids"."engine_id";
+FROM "VEHICLE" v
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+GROUP BY eb."ids"."engine_type_id"
+ORDER BY eb."ids"."engine_type_id";
 
 -- ============================================================
--- FILTER QUERIES (WITH TO_NUMBER)
+-- FILTERS AND AGGREGATIONS
 -- ============================================================
 
--- Query 18: High-horsepower vehicles (300+ HP)
--- Note: Use TO_NUMBER() for VARCHAR to numeric conversion
 SELECT
     v."rowkey" as vin,
     v."info"."make",
     v."info"."model",
     v."info"."year",
     e."specs"."horsepower",
-    e."specs"."fuel_type"
+    e."specs"."fuel_type",
+    eb."rowkey" as engine_build_id
 FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+JOIN "ENGINE" e ON eb."ids"."engine_type_id" = e."rowkey"
 WHERE TO_NUMBER(e."specs"."horsepower") >= 300
 ORDER BY TO_NUMBER(e."specs"."horsepower") DESC;
 
--- Query 19: Vehicles with AWD
 SELECT
     v."rowkey" as vin,
     v."info"."make",
     v."info"."model",
     t."specs"."type",
-    t."specs"."drive_type"
+    t."specs"."drive_type",
+    tb."rowkey" as transmission_build_id
 FROM "VEHICLE" v
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
+JOIN "TRANSMISSION_BUILD" tb ON v."ids"."transmission_build_id" = tb."rowkey"
+JOIN "TRANSMISSION" t ON tb."ids"."transmission_type_id" = t."rowkey"
 WHERE t."specs"."drive_type" = 'AWD'
 ORDER BY v."info"."make";
 
--- Query 20: Manual transmission vehicles
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    v."info"."year",
-    t."specs"."type",
-    t."specs"."gears"
-FROM "VEHICLE" v
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-WHERE t."specs"."type" = 'Manual'
-ORDER BY v."rowkey";
-
--- Query 21: Coupe body style
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    c."specs"."body_style",
-    c."specs"."doors",
-    c."specs"."material"
-FROM "VEHICLE" v
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
-WHERE c."specs"."body_style" = 'Coupe'
-ORDER BY v."rowkey";
-
--- Query 22: Electric vehicles
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    v."info"."year",
-    e."specs"."horsepower",
-    e."specs"."fuel_type"
-FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-WHERE e."specs"."fuel_type" = 'Electric'
-ORDER BY v."rowkey";
-
--- Query 23: Vehicles from 2023 or newer
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    v."info"."year",
-    e."specs"."horsepower",
-    t."specs"."drive_type"
-FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-WHERE TO_NUMBER(v."info"."year") >= 2023
-ORDER BY TO_NUMBER(v."info"."year") DESC, v."info"."make";
-
--- Query 24: Lightweight chassis (under 4000 lb)
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    c."specs"."body_style",
-    c."specs"."curb_weight_lb"
-FROM "VEHICLE" v
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
-WHERE TO_NUMBER(c."specs"."curb_weight_lb") < 4000
-ORDER BY TO_NUMBER(c."specs"."curb_weight_lb") ASC;
-
--- ============================================================
--- AGGREGATION QUERIES
--- ============================================================
-
--- Query 25: Count vehicles per make
 SELECT
     "info"."make",
     COUNT(*) as vehicle_count
@@ -401,91 +483,10 @@ FROM "VEHICLE"
 GROUP BY "info"."make"
 ORDER BY "info"."make";
 
--- Query 26: Count vehicles per transmission type
 SELECT
-    t."specs"."type" as transmission_type,
+    eb."production"."plant_code" as engine_plant,
     COUNT(*) as vehicle_count
 FROM "VEHICLE" v
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-GROUP BY t."specs"."type"
-ORDER BY t."specs"."type";
-
--- Query 27: Count vehicles per body style
-SELECT
-    c."specs"."body_style",
-    COUNT(*) as vehicle_count
-FROM "VEHICLE" v
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
-GROUP BY c."specs"."body_style"
-ORDER BY c."specs"."body_style";
-
--- Query 28: Average horsepower by make
-SELECT
-    v."info"."make",
-    AVG(TO_NUMBER(e."specs"."horsepower")) as avg_horsepower,
-    COUNT(*) as vehicle_count
-FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-GROUP BY v."info"."make"
-ORDER BY AVG(TO_NUMBER(e."specs"."horsepower")) DESC;
-
--- Query 29: Vehicles per fuel type
-SELECT
-    e."specs"."fuel_type",
-    COUNT(*) as vehicle_count
-FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-GROUP BY e."specs"."fuel_type"
-ORDER BY e."specs"."fuel_type";
-
--- ============================================================
--- DASHBOARD / COMPLEX QUERIES
--- ============================================================
-
--- Query 30: Vehicle dashboard - complete specs summary
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    v."info"."year",
-    v."info"."color",
-    v."info"."trim",
-    e."rowkey" as engine_id,
-    e."specs"."horsepower",
-    e."specs"."fuel_type",
-    t."rowkey" as transmission_id,
-    t."specs"."type" as transmission_type,
-    t."specs"."drive_type",
-    c."rowkey" as chassis_id,
-    c."specs"."body_style",
-    c."specs"."curb_weight_lb"
-FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
-ORDER BY v."info"."make", v."info"."model";
-
--- Query 31: Performance vehicles (300+ HP, coupe or hatchback)
-SELECT
-    v."rowkey" as vin,
-    v."info"."make",
-    v."info"."model",
-    e."specs"."horsepower",
-    t."specs"."type",
-    c."specs"."body_style"
-FROM "VEHICLE" v
-JOIN "ENGINE" e ON v."ids"."engine_id" = e."rowkey"
-JOIN "TRANSMISSION" t ON v."ids"."transmission_id" = t."rowkey"
-JOIN "CHASSIS" c ON v."ids"."chassis_id" = c."rowkey"
-WHERE TO_NUMBER(e."specs"."horsepower") >= 300
-  AND (c."specs"."body_style" = 'Coupe' OR c."specs"."body_style" = 'Hatchback')
-ORDER BY TO_NUMBER(e."specs"."horsepower") DESC;
-
--- Query 32: Find vehicles sharing the same engine and transmission combo
-SELECT
-    "ids"."engine_id",
-    "ids"."transmission_id",
-    COUNT(*) as vehicle_count
-FROM "VEHICLE"
-GROUP BY "ids"."engine_id", "ids"."transmission_id"
-ORDER BY "ids"."engine_id", "ids"."transmission_id";
+JOIN "ENGINE_BUILD" eb ON v."ids"."engine_build_id" = eb."rowkey"
+GROUP BY eb."production"."plant_code"
+ORDER BY eb."production"."plant_code";

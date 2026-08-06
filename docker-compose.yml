@@ -54,6 +54,9 @@ services:
       - HBase__Server=opdb-docker
       - HBase__Port=8080
       - ASPNETCORE_ENVIRONMENT=Production
+    volumes:
+      # Keep Garage Bay UI in sync with host without image rebuild
+      - ./wwwroot:/app/wwwroot:ro
     restart: unless-stopped
 
 networks:
